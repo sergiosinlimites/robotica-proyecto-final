@@ -103,10 +103,13 @@
       link2="${prefix}gripper_finger_base_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_elbow_F10_0_link" link2="${prefix}gripper_servo_link"
       reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_elbow_F10_0_link" link2="${prefix}task_board_link"
       reason="Never" />
+    
     <disable_collisions link1="${prefix}arm_elbow_F10_0_link" link2="${prefix}task_board_mount_link"
       reason="Never" />
+    -->
     <disable_collisions link1="${prefix}arm_elbow_F10_1_link" link2="${prefix}arm_elbow_F10_2_link"
       reason="Adjacent" />
     <disable_collisions link1="${prefix}arm_elbow_F10_1_link" link2="${prefix}arm_elbow_F3_0_link"
@@ -143,10 +146,13 @@
       link2="${prefix}gripper_finger_base_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_elbow_F10_1_link" link2="${prefix}gripper_servo_link"
       reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_elbow_F10_1_link" link2="${prefix}task_board_link"
       reason="Never" />
+    
     <disable_collisions link1="${prefix}arm_elbow_F10_1_link" link2="${prefix}task_board_mount_link"
       reason="Never" />
+    -->
     <disable_collisions link1="${prefix}arm_elbow_F10_2_link" link2="${prefix}arm_elbow_F3_0_link"
       reason="Adjacent" />
     <disable_collisions link1="${prefix}arm_elbow_F10_2_link" link2="${prefix}arm_elbow_flex_link"
@@ -181,10 +187,13 @@
       link2="${prefix}gripper_finger_base_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_elbow_F10_2_link" link2="${prefix}gripper_servo_link"
       reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_elbow_F10_2_link" link2="${prefix}task_board_link"
       reason="Never" />
+    
     <disable_collisions link1="${prefix}arm_elbow_F10_2_link" link2="${prefix}task_board_mount_link"
       reason="Never" />
+    -->
     <disable_collisions link1="${prefix}arm_elbow_F3_0_link" link2="${prefix}arm_elbow_flex_link"
       reason="Never" />
     <disable_collisions link1="${prefix}arm_elbow_F3_0_link"
@@ -247,10 +256,13 @@
       link2="${prefix}gripper_finger_base_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_elbow_flex_link" link2="${prefix}gripper_servo_link"
       reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_elbow_flex_link" link2="${prefix}task_board_link"
       reason="Never" />
+    
     <disable_collisions link1="${prefix}arm_elbow_flex_link" link2="${prefix}task_board_mount_link"
       reason="Never" />
+    -->
     <disable_collisions link1="${prefix}arm_elbow_flex_servo_link"
       link2="${prefix}arm_shoulder_F10_0_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_elbow_flex_servo_link"
@@ -273,8 +285,10 @@
       link2="${prefix}arm_wrist_flex_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_elbow_flex_servo_link"
       link2="${prefix}arm_wrist_flex_servo_link" reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_elbow_flex_servo_link" link2="${prefix}base_mount_link"
       reason="Never" />
+      -->
     <disable_collisions link1="${prefix}arm_elbow_flex_servo_link"
       link2="${prefix}gripper_finger1_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_elbow_flex_servo_link"
@@ -283,10 +297,12 @@
       link2="${prefix}gripper_finger_base_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_elbow_flex_servo_link"
       link2="${prefix}gripper_servo_link" reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_elbow_flex_servo_link" link2="${prefix}task_board_link"
       reason="Never" />
     <disable_collisions link1="${prefix}arm_elbow_flex_servo_link"
       link2="${prefix}task_board_mount_link" reason="Never" />
+      -->
     <disable_collisions link1="${prefix}arm_shoulder_F10_0_link"
       link2="${prefix}arm_shoulder_F10_1_link" reason="Adjacent" />
     <disable_collisions link1="${prefix}arm_shoulder_F10_0_link"
@@ -307,8 +323,10 @@
       link2="${prefix}arm_wrist_flex_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F10_0_link"
       link2="${prefix}arm_wrist_flex_servo_link" reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_shoulder_F10_0_link" link2="${prefix}base_mount_link"
       reason="Never" />
+    -->
     <disable_collisions link1="${prefix}arm_shoulder_F10_0_link"
       link2="${prefix}gripper_finger1_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F10_0_link"
@@ -317,10 +335,12 @@
       link2="${prefix}gripper_finger_base_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F10_0_link" link2="${prefix}gripper_servo_link"
       reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_shoulder_F10_0_link" link2="${prefix}task_board_link"
       reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F10_0_link"
       link2="${prefix}task_board_mount_link" reason="Never" />
+    -->
     <disable_collisions link1="${prefix}arm_shoulder_F10_1_link"
       link2="${prefix}arm_shoulder_F10_2_link" reason="Adjacent" />
     <disable_collisions link1="${prefix}arm_shoulder_F10_1_link"
@@ -339,8 +359,10 @@
       link2="${prefix}arm_wrist_flex_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F10_1_link"
       link2="${prefix}arm_wrist_flex_servo_link" reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_shoulder_F10_1_link" link2="${prefix}base_mount_link"
       reason="Never" />
+    -->
     <disable_collisions link1="${prefix}arm_shoulder_F10_1_link"
       link2="${prefix}gripper_finger1_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F10_1_link"
@@ -349,10 +371,12 @@
       link2="${prefix}gripper_finger_base_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F10_1_link" link2="${prefix}gripper_servo_link"
       reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_shoulder_F10_1_link" link2="${prefix}task_board_link"
       reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F10_1_link"
       link2="${prefix}task_board_mount_link" reason="Never" />
+    -->
     <disable_collisions link1="${prefix}arm_shoulder_F10_2_link"
       link2="${prefix}arm_shoulder_F3_0_link" reason="Adjacent" />
     <disable_collisions link1="${prefix}arm_shoulder_F10_2_link"
@@ -369,8 +393,10 @@
       link2="${prefix}arm_wrist_flex_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F10_2_link"
       link2="${prefix}arm_wrist_flex_servo_link" reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_shoulder_F10_2_link" link2="${prefix}base_mount_link"
       reason="Never" />
+    -->
     <disable_collisions link1="${prefix}arm_shoulder_F10_2_link"
       link2="${prefix}gripper_finger1_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F10_2_link"
@@ -379,10 +405,12 @@
       link2="${prefix}gripper_finger_base_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F10_2_link" link2="${prefix}gripper_servo_link"
       reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_shoulder_F10_2_link" link2="${prefix}task_board_link"
       reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F10_2_link"
       link2="${prefix}task_board_mount_link" reason="Never" />
+    -->
     <disable_collisions link1="${prefix}arm_shoulder_F3_0_link"
       link2="${prefix}arm_shoulder_lift_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F3_0_link"
@@ -397,8 +425,10 @@
       reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F3_0_link"
       link2="${prefix}arm_wrist_flex_servo_link" reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_shoulder_F3_0_link" link2="${prefix}base_mount_link"
       reason="Never" />
+    -->
     <disable_collisions link1="${prefix}arm_shoulder_F3_0_link"
       link2="${prefix}gripper_finger1_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F3_0_link"
@@ -407,10 +437,12 @@
       link2="${prefix}gripper_finger_base_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F3_0_link" link2="${prefix}gripper_servo_link"
       reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_shoulder_F3_0_link" link2="${prefix}task_board_link"
       reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_F3_0_link"
       link2="${prefix}task_board_mount_link" reason="Never" />
+    -->
     <disable_collisions link1="${prefix}arm_shoulder_lift_link"
       link2="${prefix}arm_shoulder_lift_servo_link" reason="Adjacent" />
     <disable_collisions link1="${prefix}arm_shoulder_lift_link"
@@ -423,12 +455,16 @@
       reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_lift_link"
       link2="${prefix}arm_wrist_flex_servo_link" reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_shoulder_lift_link" link2="${prefix}base_mount_link"
       reason="Never" />
+    -->
+    <!--
     <disable_collisions link1="${prefix}arm_shoulder_lift_link" link2="${prefix}task_board_link"
       reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_lift_link"
       link2="${prefix}task_board_mount_link" reason="Never" />
+    -->
     <disable_collisions link1="${prefix}arm_shoulder_lift_servo_link"
       link2="${prefix}arm_shoulder_pan_link" reason="Adjacent" />
     <disable_collisions link1="${prefix}arm_shoulder_lift_servo_link"
@@ -437,20 +473,27 @@
       link2="${prefix}arm_wrist_flex_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_lift_servo_link"
       link2="${prefix}arm_wrist_flex_servo_link" reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_shoulder_lift_servo_link"
       link2="${prefix}base_mount_link" reason="Never" />
+    -->
+    <!--
     <disable_collisions link1="${prefix}arm_shoulder_lift_servo_link"
       link2="${prefix}task_board_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_lift_servo_link"
       link2="${prefix}task_board_mount_link" reason="Never" />
+    -->
     <disable_collisions link1="${prefix}arm_shoulder_pan_link"
       link2="${prefix}arm_shoulder_pan_servo_link" reason="Adjacent" />
     <disable_collisions link1="${prefix}arm_shoulder_pan_link" link2="${prefix}arm_wrist_flex_link"
       reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_pan_link"
       link2="${prefix}arm_wrist_flex_servo_link" reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}arm_shoulder_pan_link" link2="${prefix}base_mount_link"
       reason="Never" />
+    -->
+    <!--
     <disable_collisions link1="${prefix}arm_shoulder_pan_link" link2="${prefix}task_board_link"
       reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_pan_link"
@@ -461,6 +504,7 @@
       link2="${prefix}task_board_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_shoulder_pan_servo_link"
       link2="${prefix}task_board_mount_link" reason="Never" />
+    -->
     <disable_collisions link1="${prefix}arm_wrist_F3_0_link" link2="${prefix}arm_wrist_flex_link"
       reason="Adjacent" />
     <disable_collisions link1="${prefix}arm_wrist_F3_0_link"
@@ -491,10 +535,12 @@
       link2="${prefix}gripper_finger_base_link" reason="Never" />
     <disable_collisions link1="${prefix}arm_wrist_flex_servo_link"
       link2="${prefix}gripper_servo_link" reason="Never" />
+    <!--
     <disable_collisions link1="${prefix}base_mount_link" link2="${prefix}task_board_link"
       reason="Never" />
     <disable_collisions link1="${prefix}base_mount_link" link2="${prefix}task_board_mount_link"
       reason="Adjacent" />
+    -->
     <disable_collisions link1="${prefix}gripper_finger1_link" link2="${prefix}gripper_finger2_link"
       reason="Never" />
     <disable_collisions link1="${prefix}gripper_finger1_link"
@@ -507,7 +553,9 @@
       reason="Never" />
     <disable_collisions link1="${prefix}gripper_finger_base_link"
       link2="${prefix}gripper_servo_link" reason="Adjacent" />
+    <!--
     <disable_collisions link1="${prefix}task_board_link" link2="${prefix}task_board_mount_link"
       reason="Adjacent" />
+    -->
   </xacro:macro>
 </robot>

@@ -9,6 +9,7 @@ from rclpy.action import ActionServer, GoalResponse, CancelResponse
 
 from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
+from sensor_msgs.msg import JointState
 
 from dynamixel_sdk import PortHandler, PacketHandler
 
@@ -32,6 +33,10 @@ class PincherFollowJointTrajectory(Node):
       - Envía un goal FollowJointTrajectory al action server
       - Este nodo convierte las posiciones (radianes) a ticks y las manda
         a los servos en los tiempos indicados en time_from_start
+
+    Además:
+      - Publica /joint_states con las posiciones COMANDADAS (en radianes) para
+        que robot_state_publisher y MoveIt puedan conocer el estado actual.
 
     NOTA SOBRE GRIPPER:
       - Más abajo hay líneas COMENTADAS para incluir el gripper:
@@ -100,6 +105,18 @@ class PincherFollowJointTrajectory(Node):
 
         self.get_logger().info(f"Mapa joint→ID: {self.joint_to_id}")
 
+        # Lista fija de joints para publicar en /joint_states
+        self.joint_names = list(self.joint_to_id.keys())
+
+        # Estado actual COMANDADO (en radianes) de cada joint
+        # Inicialmente asumimos 0.0 rad (equivalente a ~512 ticks en nuestro modelo)
+        self.current_positions = {name: 0.0 for name in self.joint_names}
+
+        # Publisher de /joint_states + timer periódico
+        self.joint_state_pub = self.create_publisher(JointState, "joint_states", 10)
+        # 50 Hz (0.02 s) es más que suficiente
+        self.joint_state_timer = self.create_timer(0.02, self.publish_joint_states)
+
         # ---------------- Inicializar comunicación Dynamixel ----------------
         self.port = PortHandler(port_name)
         if not self.port.openPort():
@@ -128,12 +145,12 @@ class PincherFollowJointTrajectory(Node):
         )
 
         # ---------------- Action Server FollowJointTrajectory ----------------
-        # Nombre del action server: /pincher_arm_controller/follow_joint_trajectory
+        # Nombre del action server: /joint_trajectory_controller/follow_joint_trajectory
         # Debe coincidir con la configuración de controladores de MoveIt.
         self._action_server = ActionServer(
             self,
             FollowJointTrajectory,
-            "pincher_arm_controller/follow_joint_trajectory",
+            "joint_trajectory_controller/follow_joint_trajectory",
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,
             execute_callback=self.execute_callback,
@@ -141,7 +158,7 @@ class PincherFollowJointTrajectory(Node):
 
         self.get_logger().info(
             "Action server FollowJointTrajectory listo en "
-            "'/pincher_arm_controller/follow_joint_trajectory'"
+            "'/joint_trajectory_controller/follow_joint_trajectory'"
         )
 
     # ----------------------------------------------------------------------
@@ -223,6 +240,24 @@ class PincherFollowJointTrajectory(Node):
         return result
 
     # ----------------------------------------------------------------------
+    # Publicación de /joint_states
+    # ----------------------------------------------------------------------
+    def publish_joint_states(self):
+        """
+        Publica las posiciones COMANDADAS de las joints en /joint_states.
+
+        Nota: por simplicidad usamos las posiciones que le hemos mandado
+        a los servos (modelo "open-loop"). Si más adelante lees feedback
+        real de los AX-12A, aquí podrías publicar las posiciones medidas.
+        """
+        msg = JointState()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.name = self.joint_names
+        msg.position = [self.current_positions[name] for name in self.joint_names]
+
+        self.joint_state_pub.publish(msg)
+
+    # ----------------------------------------------------------------------
     # Utilidades internas
     # ----------------------------------------------------------------------
     def send_point(self, joint_names, point: JointTrajectoryPoint):
@@ -230,6 +265,9 @@ class PincherFollowJointTrajectory(Node):
         Envía un JointTrajectoryPoint a los servos:
           - joint_names define el orden
           - point.positions está en radianes
+
+        Además actualiza self.current_positions para que /joint_states
+        refleje las posiciones comandadas.
         """
         if len(point.positions) != len(joint_names):
             self.get_logger().error(
@@ -249,7 +287,7 @@ class PincherFollowJointTrajectory(Node):
             tick = self.rad_to_dxl_tick(pos_rad)
             tick_clamped = max(DXL_MIN_TICK, min(DXL_MAX_TICK, tick))
 
-            # Enviar comando de posición
+            # Enviar comando de posición al servo
             _, err = self.packet.write2ByteTxRx(
                 self.port, dxl_id, ADDR_GOAL_POSITION, tick_clamped
             )
@@ -258,6 +296,9 @@ class PincherFollowJointTrajectory(Node):
                     f"Error al mandar posición a ID {dxl_id}: tick={tick_clamped}, "
                     f"err={err}"
                 )
+
+            # Actualizar posición comandada para /joint_states
+            self.current_positions[j_name] = pos_rad
 
     def rad_to_dxl_tick(self, rad: float) -> int:
         """

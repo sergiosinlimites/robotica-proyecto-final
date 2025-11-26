@@ -1,1 +1,9 @@
-# -ROB_Intro_ROS2_Humble_Phantom_Pincher_X100_Updated
+# KIT PHANTOM X PINCHER
+
+## Setup
+
+## RVIZ
+
+## Moveit
+
+## ComputerVision

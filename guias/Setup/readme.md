@@ -1,4 +1,4 @@
-# 🛠️ Setup para el Curso
+# 🛠️ Setup para el Kit de Phantom X Pincher
 
 Este repositorio requiere el uso de [Git LFS (Large File Storage)](https://git-lfs.com/) para gestionar archivos pesados como `.stp`, `.stl`, `.ipt`, entre otros, que superan los 100 MB y no pueden ser subidos directamente a GitHub.
 

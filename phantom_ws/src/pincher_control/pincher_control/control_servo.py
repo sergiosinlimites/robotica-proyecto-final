@@ -7,6 +7,10 @@ from tkinter import ttk, messagebox
 import threading
 import subprocess
 import os
+import math
+
+MAX_ANGLE_DEG = 150.0
+MIN_ANGLE_DEG = -150.0
 
 # ============================================================
 #  CONFIGURACIÓN: ¿QUÉ MOTORES ESTÁS USANDO?
@@ -191,6 +195,22 @@ class PincherController(Node):
 
         return int(radians * inv_scale + center)
 
+    def dxl_to_degrees(self, dxl_value, motor_id):
+        """Convierte un valor Dynamixel a grados, respetando el signo del joint."""
+        angle_rad = self.dxl_to_radians(dxl_value)
+        angle_rad *= self.joint_sign.get(motor_id, 1)
+        return angle_rad * 180.0 / math.pi
+
+    def degrees_to_dxl(self, degrees, motor_id):
+        """Convierte grados (respecto a HOME = 0°) a valor Dynamixel.
+
+        IMPORTANTE: 0° corresponde exactamente a DEFAULT_GOAL, por lo que
+        el HOME físico no se mueve al cambiar de ticks a grados.
+        """
+        angle_rad = degrees * math.pi / 180.0
+        angle_rad *= self.joint_sign.get(motor_id, 1)
+        return self.radians_to_dxl(angle_rad)
+
     def publish_joint_states(self):
         """Publica el estado de las articulaciones para RViz"""
         from sensor_msgs.msg import JointState
@@ -346,7 +366,7 @@ class PincherGUI:
         self.sliders = {}
         self.labels = {}
         
-        # Sliders para cada motor
+        # Sliders para cada motor (en grados, respecto a HOME = 0°)
         for i, motor_id in enumerate(self.controller.dxl_ids):
             motor_frame = tk.Frame(motors_frame)
             motor_frame.pack(fill='x', pady=5)
@@ -356,16 +376,27 @@ class PincherGUI:
                                   font=("Arial", 10, "bold"), width=8)
             motor_label.pack(side='left', padx=5)
             
-            # Slider
-            slider = tk.Scale(motor_frame, from_=0, to=4095, orient=tk.HORIZONTAL, 
-                             length=400, showvalue=True, resolution=1,
-                             command=lambda value, mid=motor_id: self.on_motor_slider_change(mid))
-            slider.set(DEFAULT_GOAL)
+            # Slider en grados
+            slider = tk.Scale(
+                motor_frame,
+                from_=MIN_ANGLE_DEG,
+                to=MAX_ANGLE_DEG,
+                orient=tk.HORIZONTAL,
+                length=400,
+                showvalue=True,
+                resolution=1,
+                command=lambda value, mid=motor_id: self.on_motor_slider_change(mid)
+            )
+            slider.set(0)  # HOME = 0°
             slider.pack(side='left', fill='x', expand=True, padx=5)
             
             # Etiqueta de posición
-            label = tk.Label(motor_frame, text=f'Pos: {DEFAULT_GOAL}', 
-                            font=("Arial", 9), width=10)
+            label = tk.Label(
+                motor_frame,
+                text=f'Pos: 0.0°',
+                font=("Arial", 9),
+                width=12
+            )
             label.pack(side='right', padx=5)
             
             self.sliders[motor_id] = slider
@@ -445,7 +476,7 @@ class PincherGUI:
         self.entries = {}
         self.entry_labels = {}
         
-        # Crear filas para cada motor
+        # Crear filas para cada motor (entrada en grados)
         for i, motor_id in enumerate(self.controller.dxl_ids):
             motor_frame = tk.Frame(motors_frame)
             motor_frame.pack(fill='x', pady=8)
@@ -455,13 +486,16 @@ class PincherGUI:
                                   font=("Arial", 10, "bold"), width=8)
             motor_label.pack(side='left', padx=5)
             
-            # Entry para valor en bits
-            entry_label = tk.Label(motor_frame, text="Valor (0-4095):", 
-                                  font=("Arial", 9))
+            # Entry para valor en grados
+            entry_label = tk.Label(
+                motor_frame,
+                text=f"Ángulo ({int(MIN_ANGLE_DEG)} a {int(MAX_ANGLE_DEG)} °):",
+                font=("Arial", 9)
+            )
             entry_label.pack(side='left', padx=5)
             
             entry = tk.Entry(motor_frame, width=8, font=("Arial", 10))
-            entry.insert(0, str(DEFAULT_GOAL))
+            entry.insert(0, "0")  # HOME = 0°
             entry.pack(side='left', padx=5)
             
             # Botón para mover motor individual
@@ -653,23 +687,27 @@ Características:
         self.window.after(100, self.update_joints_timer)
 
     def on_motor_slider_change(self, motor_id):
-        """Se ejecuta CADA VEZ que se mueve el slider del motor (Pestaña 1)"""
+        """Se ejecuta CADA VEZ que se mueve el slider del motor (Pestaña 1).
+
+        El slider está en grados, pero el motor sigue recibiendo ticks.
+        """
         current_time = time.time()
         
         # Control de frecuencia de actualización para no saturar
         if current_time - self.last_motor_update[motor_id] >= self.update_interval:
-            position = self.sliders[motor_id].get()
+            angle_deg = float(self.sliders[motor_id].get())
             
             # Solo mover si la velocidad no es 0 y no hay emergencia
             speed = self.speed_slider_tab1.get()
             if speed > 0 and not self.controller.emergency_stop_activated:
-                self.controller.move_motor(motor_id, position)
-                self.labels[motor_id].config(text=f'Pos: {position}')
+                dxl_position = self.controller.degrees_to_dxl(angle_deg, motor_id)
+                self.controller.move_motor(motor_id, dxl_position)
+                self.labels[motor_id].config(text=f'Pos: {angle_deg:.1f}°')
                 self.last_motor_update[motor_id] = current_time
                 
                 # Actualizar estado brevemente
-                self.status_label.config(text=f"Motor {motor_id} moviéndose a {position}")
-                self.window.after(2000, lambda: self.status_label.config(text="Sistema Listo"))
+                self.status_label.config(text=f"Motor {motor_id} moviéndose a {angle_deg:.1f}°")
+                self.window.after(2000, lambda: self.status_label.config(text="Sistema Listo", fg="green"))
             elif self.controller.emergency_stop_activated:
                 self.status_label.config(text=f"EMERGENCIA: No se puede mover motor {motor_id}", fg="red")
             else:
@@ -708,12 +746,12 @@ Características:
                 self.status_label.config(text="EMERGENCIA: No se puede cambiar velocidad", fg="red")
 
     def move_single_motor_from_entry(self, motor_id):
-        """Mueve un motor individual basado en el valor del entry (Pestaña 2)"""
+        """Mueve un motor individual basado en el valor del entry (Pestaña 2, en grados)."""
         try:
             value = self.entries[motor_id].get()
-            position = int(value)
+            angle_deg = float(value)
             
-            if 0 <= position <= 4095:
+            if MIN_ANGLE_DEG <= angle_deg <= MAX_ANGLE_DEG:
                 # Verificar velocidad y estado de emergencia
                 speed = self.speed_slider_tab2.get()
                 if speed == 0:
@@ -723,25 +761,29 @@ Características:
                     self.entry_labels[motor_id].config(text="EMERGENCIA", fg="red")
                     self.status_label.config(text="EMERGENCIA: No se puede mover motores", fg="red")
                 else:
-                    self.controller.move_motor(motor_id, position)
+                    dxl_position = self.controller.degrees_to_dxl(angle_deg, motor_id)
+                    self.controller.move_motor(motor_id, dxl_position)
                     self.entry_labels[motor_id].config(text="Enviado", fg="blue")
-                    self.status_label.config(text=f"Motor {motor_id} moviéndose a {position}")
+                    self.status_label.config(text=f"Motor {motor_id} moviéndose a {angle_deg:.1f}°", fg="blue")
                     
                     # Actualizar slider en la pestaña 1 si existe
                     if motor_id in self.sliders:
-                        self.sliders[motor_id].set(position)
+                        self.sliders[motor_id].set(angle_deg)
                     
                     # Resetear etiqueta después de 2 segundos
                     self.window.after(2000, lambda: self.entry_labels[motor_id].config(text="Listo", fg="green"))
-                    self.window.after(2000, lambda: self.status_label.config(text="Sistema Listo"))
+                    self.window.after(2000, lambda: self.status_label.config(text="Sistema Listo", fg="green"))
             else:
-                self.entry_labels[motor_id].config(text="Error: 0-4095", fg="red")
+                self.entry_labels[motor_id].config(
+                    text=f"Error: {int(MIN_ANGLE_DEG)} a {int(MAX_ANGLE_DEG)}°",
+                    fg="red"
+                )
                 
         except ValueError:
             self.entry_labels[motor_id].config(text="Error: Número", fg="red")
 
     def move_all_motors_from_entries(self):
-        """Mueve todos los motores basado en los valores de los entries (Pestaña 2)"""
+        """Mueve todos los motores basado en los valores de los entries (Pestaña 2, en grados)."""
         # Verificar condiciones
         speed = self.speed_slider_tab2.get()
         if speed == 0:
@@ -756,28 +798,37 @@ Características:
         for motor_id in self.controller.dxl_ids:
             try:
                 value = self.entries[motor_id].get()
-                position = int(value)
+                angle_deg = float(value)
                 
-                if 0 <= position <= 4095:
-                    self.controller.move_motor(motor_id, position)
+                if MIN_ANGLE_DEG <= angle_deg <= MAX_ANGLE_DEG:
+                    dxl_position = self.controller.degrees_to_dxl(angle_deg, motor_id)
+                    self.controller.move_motor(motor_id, dxl_position)
                     self.entry_labels[motor_id].config(text="Enviado", fg="blue")
                     success_count += 1
                     
                     # Actualizar slider en la pestaña 1 si existe
                     if motor_id in self.sliders:
-                        self.sliders[motor_id].set(position)
+                        self.sliders[motor_id].set(angle_deg)
                 else:
-                    self.entry_labels[motor_id].config(text="Error: 0-4095", fg="red")
+                    self.entry_labels[motor_id].config(
+                        text=f"Error: {int(MIN_ANGLE_DEG)} a {int(MAX_ANGLE_DEG)}°",
+                        fg="red"
+                    )
                     
             except ValueError:
                 self.entry_labels[motor_id].config(text="Error: Número", fg="red")
         
-        self.status_label.config(text=f"Comando enviado a {success_count}/{len(self.controller.dxl_ids)} motores")
+        self.status_label.config(
+            text=f"Comando enviado a {success_count}/{len(self.controller.dxl_ids)} motores",
+            fg="blue"
+        )
         
         # Resetear etiquetas después de 3 segundos
-        self.window.after(3000, lambda: [label.config(text="Listo", fg="green") 
-                                        for label in self.entry_labels.values()])
-        self.window.after(3000, lambda: self.status_label.config(text="Sistema Listo"))
+        self.window.after(
+            3000,
+            lambda: [label.config(text="Listo", fg="green") for label in self.entry_labels.values()]
+        )
+        self.window.after(3000, lambda: self.status_label.config(text="Sistema Listo", fg="green"))
 
     def home_all(self):
         """Mueve todos los motores a la posición HOME"""
@@ -795,15 +846,15 @@ Características:
         
         # Actualizar interfaz
         for motor_id in self.controller.dxl_ids:
-            # Actualizar sliders en pestaña 1
+            # Actualizar sliders en pestaña 1 (HOME = 0°)
             if motor_id in self.sliders:
-                self.sliders[motor_id].set(DEFAULT_GOAL)
-                self.labels[motor_id].config(text=f'Pos: {DEFAULT_GOAL}')
+                self.sliders[motor_id].set(0.0)
+                self.labels[motor_id].config(text='Pos: 0.0°')
             
-            # Actualizar entries en pestaña 2
+            # Actualizar entries en pestaña 2 (HOME = 0°)
             if motor_id in self.entries:
                 self.entries[motor_id].delete(0, tk.END)
-                self.entries[motor_id].insert(0, str(DEFAULT_GOAL))
+                self.entries[motor_id].insert(0, "0")
                 self.entry_labels[motor_id].config(text="HOME", fg="green")
         
         self.window.after(3000, lambda: self.status_label.config(text="Sistema Listo", fg="green"))

@@ -322,33 +322,39 @@ class PincherGUI:
         self.window = tk.Tk()
         self.window.title("Control Pincher - Interfaz Completa")
         self.window.protocol("WM_DELETE_WINDOW", self.on_close)
-        
+
         # Variables para control de actualización
         self.last_motor_update = {motor_id: 0 for motor_id in controller.dxl_ids}
         self.last_speed_update = 0
         self.update_interval = 0.05  # 50ms entre actualizaciones
-        
+
         # Proceso de RViz
         self.rviz_process = None
-        
+
+        # Estado de ejecución de secuencias de pose (solo una a la vez)
+        self.pose_sequence_running = False
+
         # Crear notebook (pestañas)
         self.notebook = ttk.Notebook(self.window)
         self.notebook.pack(fill='both', expand=True, padx=10, pady=10)
-        
+
         # Crear frames para cada pestaña
         self.tab1 = ttk.Frame(self.notebook)
         self.tab2 = ttk.Frame(self.notebook)
         self.tab3 = ttk.Frame(self.notebook)  # Nueva pestaña para RViz
-        
+        self.tab4 = ttk.Frame(self.notebook)  # Nueva pestaña para control por pose
+
         self.notebook.add(self.tab1, text='Control por Sliders')
         self.notebook.add(self.tab2, text='Control por Valores')
         self.notebook.add(self.tab3, text='Visualización RViz')
-        
+        self.notebook.add(self.tab4, text='Control por Pose')
+
         # Configurar las pestañas
         self.setup_tab1()
         self.setup_tab2()
         self.setup_tab3()
-        
+        self.setup_tab4()
+
         # Barra de botones comunes en la parte inferior
         self.setup_common_buttons()
 
@@ -596,6 +602,99 @@ Características:
         # Timer para actualizar las posiciones de las articulaciones
         self.update_joints_timer()
 
+    def setup_tab4(self):
+        """Configura la pestaña 4: Control por Pose Predefinida"""
+        # Título
+        title_label = tk.Label(
+            self.tab4,
+            text="Control por Pose Predefinida",
+            font=("Arial", 14, "bold")
+        )
+        title_label.pack(pady=10)
+
+        # Descripción de las poses
+        info_text = (
+            "Pose 1 (en grados):\n"
+            "  1ra: 15°,   2da: 10°,   3ra: 90°,   4ta: 90°,   5ta: -50°\n\n"
+            "Pose 2 (en grados):\n"
+            "  1ra: -90°,  2da: -30°,  3ra: 120°,  4ta: 45°,   5ta: -60°\n\n"
+            "Pose HOME (en grados):\n"
+            "  1ra: 0°,    2da: 0°,    3ra: 0°,    4ta: 0°,    5ta: 0°\n\n"
+            "Las articulaciones se moverán en orden desde la base hasta la última."
+        )
+        info_label = tk.Label(
+            self.tab4,
+            text=info_text,
+            justify=tk.LEFT,
+            font=("Arial", 10),
+            bg="#f0f0f0",
+            relief="solid",
+            padx=10,
+            pady=10
+        )
+        info_label.pack(fill='x', padx=20, pady=10)
+
+        # Botón para ir a pose 1
+        self.pose1_btn = tk.Button(
+            self.tab4,
+            text="Ir a pose 1",
+            font=("Arial", 12, "bold"),
+            bg="#4CAF50",
+            fg="white",
+            command=self.start_pose1_sequence,
+            height=2
+        )
+        self.pose1_btn.pack(pady=15)
+
+        # Etiqueta de estado de la pose
+        self.pose1_status_label = tk.Label(
+            self.tab4,
+            text="Listo",
+            font=("Arial", 9),
+            fg="green"
+        )
+        self.pose1_status_label.pack(pady=5)
+
+        # Botón para ir a pose 2
+        self.pose2_btn = tk.Button(
+            self.tab4,
+            text="Ir a pose 2",
+            font=("Arial", 12, "bold"),
+            bg="#8BC34A",
+            fg="white",
+            command=self.start_pose2_sequence,
+            height=2
+        )
+        self.pose2_btn.pack(pady=10)
+
+        self.pose2_status_label = tk.Label(
+            self.tab4,
+            text="Listo",
+            font=("Arial", 9),
+            fg="green"
+        )
+        self.pose2_status_label.pack(pady=5)
+
+        # Botón para ir a pose HOME (secuencial)
+        self.pose_home_btn = tk.Button(
+            self.tab4,
+            text="Ir a pose HOME",
+            font=("Arial", 12, "bold"),
+            bg="#2196F3",
+            fg="white",
+            command=self.start_home_pose_sequence,
+            height=2
+        )
+        self.pose_home_btn.pack(pady=10)
+
+        self.pose_home_status_label = tk.Label(
+            self.tab4,
+            text="Listo",
+            font=("Arial", 9),
+            fg="green"
+        )
+        self.pose_home_status_label.pack(pady=5)
+
     def setup_common_buttons(self):
         """Configura los botones comunes en la parte inferior"""
         # Frame para botones comunes
@@ -682,9 +781,171 @@ Características:
             if i < len(self.controller.current_joint_positions):
                 position = self.controller.current_joint_positions[i]
                 self.joint_labels[joint_name].config(text=f"{position:.3f}")
-        
+
         # Programar siguiente actualización
         self.window.after(100, self.update_joints_timer)
+
+    def start_pose_sequence(self, target_angles, sequence_name, button, status_label, reverse=False):
+        """Inicia una secuencia genérica de pose.
+
+        Por defecto va de base → extremo. Si reverse=True, va de extremo → base.
+        """
+        if self.pose_sequence_running:
+            # Evitar lanzar múltiples secuencias simultáneas
+            return
+
+        # Comprobar parada de emergencia
+        if self.controller.emergency_stop_activated:
+            status_label.config(text="EMERGENCIA", fg="red")
+            self.status_label.config(
+                text="EMERGENCIA: No se puede mover motores",
+                fg="red"
+            )
+            return
+
+        # Usar la velocidad actual (slider de la pestaña 1)
+        speed = self.speed_slider_tab1.get() if hasattr(self, "speed_slider_tab1") else 0
+        if speed == 0:
+            status_label.config(text="Velocidad 0", fg="orange")
+            self.status_label.config(
+                text="Velocidad 0: Los motores no se moverán",
+                fg="orange"
+            )
+            return
+
+        # Construir secuencia en el orden de dxl_ids (o inverso)
+        motor_ids = list(self.controller.dxl_ids)
+        if reverse:
+            motor_ids = list(reversed(motor_ids))
+
+        sequence = []
+        for motor_id in motor_ids:
+            if motor_id in target_angles:
+                sequence.append((motor_id, target_angles[motor_id]))
+
+        if not sequence:
+            status_label.config(text="Sin motores", fg="red")
+            return
+
+        self.pose_sequence_running = True
+        button.config(state=tk.DISABLED)
+        status_label.config(text="Ejecutando...", fg="blue")
+        self.status_label.config(text=f"Ejecutando {sequence_name}", fg="blue")
+
+        # Iniciar ejecución escalonada usando after (no bloquea la GUI)
+        self.run_pose_step(sequence, 0, sequence_name, button, status_label)
+
+    def run_pose_step(self, sequence, index, sequence_name, button, status_label):
+        """Ejecuta un paso de una secuencia de pose y programa el siguiente."""
+        # Si se activó emergencia en medio de la secuencia, detenerla
+        if self.controller.emergency_stop_activated:
+            self.pose_sequence_running = False
+            button.config(state=tk.NORMAL)
+            status_label.config(text="EMERGENCIA", fg="red")
+            self.status_label.config(
+                text="EMERGENCIA: Secuencia detenida",
+                fg="red"
+            )
+            return
+
+        if index >= len(sequence):
+            # Secuencia completada
+            self.pose_sequence_running = False
+            button.config(state=tk.NORMAL)
+            status_label.config(text="Completado", fg="green")
+            self.status_label.config(text=f"{sequence_name} completada", fg="green")
+            self.window.after(
+                3000,
+                lambda: status_label.config(text="Listo", fg="green")
+            )
+            return
+
+        motor_id, angle_deg = sequence[index]
+
+        # Asegurarse de que el ángulo está dentro de los límites (NO se modifican los máximos)
+        if angle_deg < MIN_ANGLE_DEG:
+            angle_deg = MIN_ANGLE_DEG
+        elif angle_deg > MAX_ANGLE_DEG:
+            angle_deg = MAX_ANGLE_DEG
+
+        dxl_position = self.controller.degrees_to_dxl(angle_deg, motor_id)
+        self.controller.move_motor(motor_id, dxl_position)
+
+        # Actualizar interfaz (sliders y entries si existen)
+        if motor_id in self.sliders:
+            self.sliders[motor_id].set(angle_deg)
+            self.labels[motor_id].config(text=f'Pos: {angle_deg:.1f}°')
+
+        if motor_id in self.entries:
+            self.entries[motor_id].delete(0, tk.END)
+            self.entries[motor_id].insert(0, f"{angle_deg:.1f}")
+            self.entry_labels[motor_id].config(text="Enviado", fg="blue")
+
+        self.status_label.config(
+            text=f"Motor {motor_id} a {angle_deg:.1f}° ({sequence_name})",
+            fg="blue"
+        )
+
+        # Programar el siguiente motor después de un pequeño retardo (ms)
+        self.window.after(
+            1000,
+            lambda: self.run_pose_step(
+                sequence,
+                index + 1,
+                sequence_name,
+                button,
+                status_label
+            )
+        )
+
+    def start_pose1_sequence(self):
+        """Inicia la secuencia para mover el robot a la Pose 1 en orden base → extremo."""
+        target_angles = {
+            1: 15.0,
+            2: 10.0,
+            3: 90.0,
+            4: 90.0,
+            5: -50.0,
+        }
+        self.start_pose_sequence(
+            target_angles,
+            "Pose 1",
+            self.pose1_btn,
+            self.pose1_status_label
+        )
+
+    def start_pose2_sequence(self):
+        """Inicia la secuencia para mover el robot a la Pose 2 en orden base → extremo."""
+        target_angles = {
+            1: -90.0,
+            2: -30.0,
+            3: 120.0,
+            4: 45.0,
+            5: -60.0,
+        }
+        self.start_pose_sequence(
+            target_angles,
+            "Pose 2",
+            self.pose2_btn,
+            self.pose2_status_label
+        )
+
+    def start_home_pose_sequence(self):
+        """Inicia la secuencia para mover el robot a la Pose HOME en orden base → extremo."""
+        target_angles = {
+            1: 0.0,
+            2: 0.0,
+            3: 0.0,
+            4: 0.0,
+            5: 0.0,
+        }
+        self.start_pose_sequence(
+            target_angles,
+            "Pose HOME",
+            self.pose_home_btn,
+            self.pose_home_status_label,
+            reverse=True
+        )
 
     def on_motor_slider_change(self, motor_id):
         """Se ejecuta CADA VEZ que se mueve el slider del motor (Pestaña 1).

@@ -8,6 +8,12 @@ import threading
 import subprocess
 import os
 import math
+import numpy as np
+
+from geometry_msgs.msg import PoseStamped
+from sensor_msgs.msg import JointState
+from std_msgs.msg import Header
+from visualization_msgs.msg import Marker
 
 MAX_ANGLE_DEG = 150.0
 MIN_ANGLE_DEG = -150.0
@@ -70,7 +76,7 @@ class PincherController(Node):
         super().__init__('pincher_controller')
 
         # Parámetros
-        self.declare_parameter('port', '/dev/ttyUSB0')
+        self.declare_parameter('port', '/dev/ttyUSB1')
         self.declare_parameter('baudrate', 1000000)
         self.declare_parameter('dxl_ids', [1, 2, 3, 4, 5])
         self.declare_parameter('goal_positions', [DEFAULT_GOAL] * 5)
@@ -107,7 +113,6 @@ class PincherController(Node):
         self.initialize_motors(goal_positions, moving_speed, torque_limit)
         
         # Publicador para Joint States (para RViz)
-        from sensor_msgs.msg import JointState
         self.joint_state_pub = self.create_publisher(JointState, '/joint_states', 10)
         
         # Timer para publicar joint states
@@ -116,6 +121,20 @@ class PincherController(Node):
         # Posiciones actuales de las articulaciones (en radianes / metros)
         # Mantén el tamaño sincronizado con el número de motores (dxl_ids)
         self.current_joint_positions = [0.0] * 5  # Para 5 articulaciones / ejes
+
+        # Longitudes de eslabones para cinemática directa (m), según DH estándar proporcionado
+        self.L1 = 0.045
+        self.L2 = 0.107
+        self.L3 = 0.107
+        self.L4 = 0.109
+
+        # Pose cartesiana actual del TCP (x, y, z en metros)
+        self.current_tcp_xyz = (0.0, 0.0, 0.0)
+
+        # Offset en Z aplicado sobre el primer eslabón (L1) para alinear
+        # la cinemática DH con la referencia que usas en RViz (punta de la garra).
+        # Solo afecta a la visualización del TCP, no al control del robot.
+        self.tcp_z_offset = -0.02  # metros
         
         # Mapeo de IDs de motor a nombres de articulaciones del URDF de
         # `phantomx_pincher_description/urdf/phantomx_pincher.urdf`
@@ -136,6 +155,12 @@ class PincherController(Node):
             4: -1,   
             5:  1,   
         }
+
+        # Publicador de la pose del TCP (calculada con cinemática directa DH)
+        self.tcp_pose_pub = self.create_publisher(PoseStamped, '/tcp_pose', 10)
+        # Publicador de marcador de texto con XYZ del TCP para RViz
+        self.tcp_marker_pub = self.create_publisher(Marker, '/tcp_pose_marker', 10)
+        self.tcp_pose_timer = self.create_timer(0.1, self.update_tcp_pose)  # 10 Hz
 
     def initialize_motors(self, goal_positions, moving_speed, torque_limit):
         """Configuración inicial de todos los motores"""
@@ -213,9 +238,6 @@ class PincherController(Node):
 
     def publish_joint_states(self):
         """Publica el estado de las articulaciones para RViz"""
-        from sensor_msgs.msg import JointState
-        from std_msgs.msg import Header
-        
         joint_state = JointState()
         joint_state.header = Header()
         joint_state.header.stamp = self.get_clock().now().to_msg()
@@ -225,6 +247,137 @@ class PincherController(Node):
         joint_state.position = self.current_joint_positions
         
         self.joint_state_pub.publish(joint_state)
+
+    # ============================================================
+    #  CINEMÁTICA DIRECTA POR DH (SIN TF)
+    # ============================================================
+
+    def _dh_standard_np(self, a, alpha, d, theta):
+        """Devuelve la matriz A_i(theta_i) de DH estándar como numpy.array.
+
+        A_i(q_i) = trotz(theta_i) * transl(0,0,d_i) * transl(a_i,0,0) * trotx(alpha_i)
+        """
+        ca = math.cos(alpha)
+        sa = math.sin(alpha)
+        ct = math.cos(theta)
+        st = math.sin(theta)
+
+        return np.array(
+            [
+                [ct, -st * ca,  st * sa, a * ct],
+                [st,  ct * ca, -ct * sa, a * st],
+                [0.0,     sa,      ca,       d],
+                [0.0,    0.0,     0.0,     1.0],
+            ],
+            dtype=float,
+        )
+
+    def compute_tcp_fk(self):
+        """Calcula X,Y,Z del TCP usando DH estándar y los 4 primeros joints.
+
+        Usa las longitudes L1..L4 proporcionadas por ti:
+            L1 = 0.045
+            L2 = 0.107
+            L3 = 0.107
+            L4 = 0.109
+
+        Y los ángulos articulares actuales (radianes) de:
+            q1 = base
+            q2 = shoulder
+            q3 = elbow
+            q4 = wrist
+        """
+        if len(self.current_joint_positions) < 4:
+            return 0.0, 0.0, 0.0
+
+        # Ángulos articulares actuales (radianes) en el convenio de ROS/URDF.
+        # Aplicamos offsets para que la configuración HOME del robot (q=0)
+        # coincida con la configuración de referencia que usaste en Matlab:
+        #   q1_dh = -pi/2
+        #   q2_dh = -pi/2
+        #   q3_dh = 0
+        #   q4_dh = 0
+        q1_ros = self.current_joint_positions[0]
+        q2_ros = self.current_joint_positions[1]
+        q3_ros = self.current_joint_positions[2]
+        q4_ros = self.current_joint_positions[3]
+
+        q1 = q1_ros - math.pi / 2.0
+        q2 = q2_ros - math.pi / 2.0
+        q3 = q3_ros
+        q4 = q4_ros
+
+        # Ajuste solo sobre el primer eslabón (L1) para alinear en Z
+        L1 = self.L1 + self.tcp_z_offset
+        L2 = self.L2
+        L3 = self.L3
+        L4 = self.L4
+
+        # Matrices DH estándar según el código de Matlab que enviaste
+        A1 = self._dh_standard_np(0.0, -math.pi / 2.0, L1, q1)
+        A2 = self._dh_standard_np(L2, 0.0, 0.0, q2)
+        A3 = self._dh_standard_np(L3, 0.0, 0.0, q3)
+        A4 = self._dh_standard_np(L4, 0.0, 0.0, q4)
+
+        H = A1 @ A2 @ A3 @ A4
+
+        # Coordenadas en el marco DH "puro"
+        x_dh = float(H[0, 3])
+        y_dh = float(H[1, 3])
+        z = float(H[2, 3])
+
+        # Ajuste de ejes para que coincida con el sistema de la base del robot:
+        #   - Rotación de +90° alrededor de Z:
+        #       x_base = -y_dh
+        #       y_base =  x_dh
+        x_base = -y_dh
+        y_base = x_dh
+
+        return x_base, y_base, z
+
+    def update_tcp_pose(self):
+        """Actualiza la pose cartesiana del TCP usando cinemática directa DH estándar."""
+        x, y, z = self.compute_tcp_fk()
+
+        # Actualizar estado interno
+        self.current_tcp_xyz = (x, y, z)
+
+        # Publicar PoseStamped para RViz / debug
+        pose = PoseStamped()
+        pose.header = Header()
+        pose.header.stamp = self.get_clock().now().to_msg()
+        # Frame base aproximado del modelo DH (equivalente a la base del brazo)
+        pose.header.frame_id = "phantomx_pincher_arm_base_link"
+
+        pose.pose.position.x = x
+        pose.pose.position.y = y
+        pose.pose.position.z = z
+
+        # No calculamos orientación completa por ahora → identidad (sin rotación)
+        pose.pose.orientation.x = 0.0
+        pose.pose.orientation.y = 0.0
+        pose.pose.orientation.z = 0.0
+        pose.pose.orientation.w = 1.0
+
+        self.tcp_pose_pub.publish(pose)
+
+        # Publicar marcador de texto con XYZ en RViz
+        marker = Marker()
+        marker.header = pose.header
+        marker.ns = "tcp_pose"
+        marker.id = 0
+        marker.type = Marker.TEXT_VIEW_FACING
+        marker.action = Marker.ADD
+        marker.pose = pose.pose
+        marker.scale.z = 0.025  # tamaño del texto (altura de letras)
+        marker.color.r = 1.0
+        marker.color.g = 1.0
+        marker.color.b = 1.0
+        marker.color.a = 1.0
+        marker.text = f"X={x:.3f}\nY={y:.3f}\nZ={z:.3f}"
+
+        self.tcp_marker_pub.publish(marker)
+
 
     def move_motor(self, motor_id, position):
         """Mueve un motor a la posición especificada solo si no hay emergencia y velocidad > 0"""
@@ -598,8 +751,31 @@ Características:
             value_label.pack(side='left')
             
             self.joint_labels[joint_name] = value_label
-        
-        # Timer para actualizar las posiciones de las articulaciones
+
+        # Frame para mostrar la posición cartesiana del TCP
+        tcp_frame = tk.Frame(self.tab3)
+        tcp_frame.pack(fill='x', padx=20, pady=10)
+
+        tcp_label = tk.Label(
+            tcp_frame,
+            text="Posición TCP (m) (cinemática DH, base del brazo):",
+            font=("Arial", 10, "bold")
+        )
+        tcp_label.pack(anchor='w')
+
+        tcp_values_frame = tk.Frame(tcp_frame)
+        tcp_values_frame.pack(fill='x', pady=5)
+
+        self.tcp_x_label = tk.Label(tcp_values_frame, text="X: 0.000", font=("Arial", 9), width=12)
+        self.tcp_x_label.pack(side='left', padx=5)
+
+        self.tcp_y_label = tk.Label(tcp_values_frame, text="Y: 0.000", font=("Arial", 9), width=12)
+        self.tcp_y_label.pack(side='left', padx=5)
+
+        self.tcp_z_label = tk.Label(tcp_values_frame, text="Z: 0.000", font=("Arial", 9), width=12)
+        self.tcp_z_label.pack(side='left', padx=5)
+
+        # Timer para actualizar las posiciones de las articulaciones y del TCP
         self.update_joints_timer()
 
     def setup_tab4(self):
@@ -776,11 +952,18 @@ Características:
             return ""
 
     def update_joints_timer(self):
-        """Actualiza periódicamente las posiciones de las articulaciones en la interfaz"""
+        """Actualiza periódicamente las posiciones de las articulaciones y del TCP en la interfaz"""
         for i, joint_name in enumerate(self.controller.joint_names):
             if i < len(self.controller.current_joint_positions):
                 position = self.controller.current_joint_positions[i]
                 self.joint_labels[joint_name].config(text=f"{position:.3f}")
+
+        # Actualizar posición cartesiana del TCP si está disponible
+        if hasattr(self.controller, "current_tcp_xyz"):
+            x, y, z = self.controller.current_tcp_xyz
+            self.tcp_x_label.config(text=f"X: {x:.3f}")
+            self.tcp_y_label.config(text=f"Y: {y:.3f}")
+            self.tcp_z_label.config(text=f"Z: {z:.3f}")
 
         # Programar siguiente actualización
         self.window.after(100, self.update_joints_timer)

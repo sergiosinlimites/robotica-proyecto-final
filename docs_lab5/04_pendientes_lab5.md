@@ -46,7 +46,7 @@ Este documento resume **qué falta por implementar** para completar el Lab 05 co
   - Recibir una configuración articular (por ejemplo, las 5 poses propuestas en la guía).
   - Enviar esa configuración al robot (vía ROS 2).
   - Calcular la **cinemática directa** para obtener la pose cartesiana del TCP.
-- [ ] **Comparación con RViz / robot real**
+- [x] **Comparación con RViz / robot real**
   - Graficar el modelo en la toolbox y comparar visualmente con:
     - La pose mostrada en RViz.
     - La pose física del robot (si se dispone de hardware).

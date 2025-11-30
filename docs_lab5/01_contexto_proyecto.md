@@ -39,7 +39,7 @@ Este script implementa un nodo ROS 2 que controla directamente los motores Dynam
 
 - Inicializa la comunicación serie usando `dynamixel_sdk` (`PortHandler`, `PacketHandler`).
 - Configura:
-  - **Puerto** (`/dev/ttyUSB0`),
+  - **Puerto** (`/dev/ttyUSB1`),
   - **Baudrate** (1 Mbps),
   - **IDs de motores** (`[1,2,3,4,5]`),
   - **Torque enable**, límite de torque y velocidad,

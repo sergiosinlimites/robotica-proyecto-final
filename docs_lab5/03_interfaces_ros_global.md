@@ -14,7 +14,7 @@
 
 **Parámetros** (ejemplos por defecto):
 
-- `port` (`string`): `/dev/ttyUSB0`
+- `port` (`string`): `/dev/ttyUSB1`
 - `baudrate` (`int`): `1000000`
 - `dxl_ids` (`int[]`): `[1, 2, 3, 4, 5]`
 - `goal_positions` (`int[]`): posición inicial de cada motor en ticks.
@@ -50,7 +50,7 @@
 
 **Parámetros principales:**
 
-- `port`: `/dev/ttyUSB0`
+- `port`: `/dev/ttyUSB1`
 - `baudrate`: `1000000`
 - `joint_prefix`: `"phantomx_pincher_"`
 - `moving_speed`: velocidad de los servos.

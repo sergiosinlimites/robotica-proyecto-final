@@ -70,7 +70,7 @@ class PincherFollowJointTrajectory(Node):
 
         # -------------- Parámetros configurables del nodo --------------
         # Puerto serie donde está conectado el adaptador (U2D2, etc.)
-        self.declare_parameter("port", "/dev/ttyUSB0")
+        self.declare_parameter("port", "/dev/ttyUSB1")
         # Baudrate del bus Dynamixel
         self.declare_parameter("baudrate", 1000000)
         # Prefijo de joints según el URDF (por defecto phantomx_pincher_)

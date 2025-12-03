@@ -16,7 +16,7 @@ class PincherController(Node):
         super().__init__('pincher_controller')
 
         # Parámetros
-        self.declare_parameter('port', '/dev/ttyUSB1')
+        self.declare_parameter('port', '/dev/ttyUSB0')
         self.declare_parameter('baudrate', 1000000)
         self.declare_parameter('dxl_ids', [1, 2, 3, 4, 5])
         self.declare_parameter('goal_positions', [512, 512, 512, 512, 512])

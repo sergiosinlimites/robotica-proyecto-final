@@ -15,6 +15,15 @@ from sensor_msgs.msg import JointState
 from std_msgs.msg import Header
 from visualization_msgs.msg import Marker
 
+try:
+    from phantomx_pincher_interfaces.msg import PoseCommand
+except Exception:
+    PoseCommand = None  # type: ignore
+
+# Desactiva siempre el uso de PoseCommand para evitar errores de typesupport C.
+# La pestaña "Espacio de la Tarea" seguirá mostrando un mensaje de que no está disponible.
+HAS_POSE_COMMAND = False
+
 MAX_ANGLE_DEG = 150.0
 MIN_ANGLE_DEG = -150.0
 
@@ -76,7 +85,7 @@ class PincherController(Node):
         super().__init__('pincher_controller')
 
         # Parámetros
-        self.declare_parameter('port', '/dev/ttyUSB1')
+        self.declare_parameter('port', '/dev/ttyUSB0')
         self.declare_parameter('baudrate', 1000000)
         self.declare_parameter('dxl_ids', [1, 2, 3, 4, 5])
         self.declare_parameter('goal_positions', [DEFAULT_GOAL] * 5)
@@ -159,6 +168,16 @@ class PincherController(Node):
         # Publicador de marcador de texto con XYZ del TCP para RViz
         self.tcp_marker_pub = self.create_publisher(Marker, '/tcp_pose_marker', 10)
         self.tcp_pose_timer = self.create_timer(0.1, self.update_tcp_pose)  # 10 Hz
+
+        # Publicador de comandos en espacio de la tarea (X, Y, Z, R, P, Y) hacia MoveIt
+        if HAS_POSE_COMMAND:
+            self.pose_command_pub = self.create_publisher(PoseCommand, 'pose_command', 10)
+        else:
+            self.pose_command_pub = None
+            self.get_logger().warn(
+                "PoseCommand no disponible (phantomx_pincher_interfaces sin soporte C); "
+                "la pestaña 'Espacio de la Tarea' solo mostrará un aviso."
+            )
 
     def initialize_motors(self, goal_positions, moving_speed, torque_limit):
         """Configuración inicial de todos los motores"""
@@ -548,14 +567,16 @@ class PincherGUI:
         # Crear frames para cada pestaña
         self.tab1 = ttk.Frame(self.notebook)
         self.tab2 = ttk.Frame(self.notebook)
-        self.tab3 = ttk.Frame(self.notebook)  # Nueva pestaña para RViz
-        self.tab4 = ttk.Frame(self.notebook)  # Nueva pestaña para control por pose
+        self.tab3 = ttk.Frame(self.notebook)  # Visualización RViz
+        self.tab4 = ttk.Frame(self.notebook)  # Control por pose articular
         self.tab5 = ttk.Frame(self.notebook)  # Pestaña "Acerca de"
+        self.tab6 = ttk.Frame(self.notebook)  # Control en espacio de la tarea
 
         self.notebook.add(self.tab1, text='Control por Sliders')
         self.notebook.add(self.tab2, text='Control por Valores')
         self.notebook.add(self.tab3, text='Visualización RViz')
         self.notebook.add(self.tab4, text='Control por Pose')
+        self.notebook.add(self.tab6, text='Espacio de la Tarea')
         self.notebook.add(self.tab5, text='Acerca de')
 
         # Configurar las pestañas
@@ -563,6 +584,7 @@ class PincherGUI:
         self.setup_tab2()
         self.setup_tab3()
         self.setup_tab4()
+        self.setup_tab6()
         self.setup_tab5()
 
         # Barra de botones comunes en la parte inferior
@@ -993,6 +1015,94 @@ Características:
             font=("Arial", 11),
         )
         group_label.pack(anchor='w')
+    def setup_tab6(self):
+        """Configura la pestaña 6: Control en espacio de la tarea (XYZ + RPY)."""
+        frame = tk.Frame(self.tab6)
+        frame.pack(fill='both', expand=True, padx=20, pady=20)
+
+        title = tk.Label(
+            frame,
+            text="Control en Espacio de la Tarea (TCP - MoveIt)",
+            font=("Arial", 14, "bold")
+        )
+        title.pack(pady=(0, 15))
+
+        info = tk.Label(
+            frame,
+            text=(
+                "Esta pestaña permite comandar el TCP en espacio cartesiano.\n"
+                "Los ángulos Roll, Pitch y Yaw se ingresan en grados y se\n"
+                "convierten internamente a radianes para MoveIt.\n"
+                "El nodo 'commander' de MoveIt recibe el tópico 'pose_command'\n"
+                "y planifica/ejecuta la trayectoria correspondiente."
+            ),
+            justify=tk.LEFT,
+            font=("Arial", 9),
+            bg="#f0f0f0",
+            relief="solid",
+            padx=10,
+            pady=10,
+        )
+        info.pack(fill='x', pady=(0, 15))
+
+        # Frame para campos numéricos
+        fields = tk.Frame(frame)
+        fields.pack(fill='x', pady=10)
+
+        self.task_x_var = tk.DoubleVar(value=0.10)
+        self.task_y_var = tk.DoubleVar(value=0.00)
+        self.task_z_var = tk.DoubleVar(value=0.10)
+        self.task_roll_deg_var = tk.DoubleVar(value=0.0)
+        self.task_pitch_deg_var = tk.DoubleVar(value=0.0)
+        self.task_yaw_deg_var = tk.DoubleVar(value=0.0)
+        self.task_cartesian_var = tk.BooleanVar(value=False)
+
+        def add_field(row, label_text, var, units):
+            lbl = tk.Label(fields, text=label_text, font=("Arial", 10), width=10, anchor='e')
+            lbl.grid(row=row, column=0, padx=5, pady=3)
+            entry = tk.Entry(fields, textvariable=var, width=10, font=("Arial", 10))
+            entry.grid(row=row, column=1, padx=5, pady=3)
+            u_lbl = tk.Label(fields, text=units, font=("Arial", 9), anchor='w')
+            u_lbl.grid(row=row, column=2, padx=5, pady=3, sticky='w')
+
+        add_field(0, "X:", self.task_x_var, "m")
+        add_field(1, "Y:", self.task_y_var, "m")
+        add_field(2, "Z:", self.task_z_var, "m")
+        add_field(3, "Roll:", self.task_roll_deg_var, "deg")
+        add_field(4, "Pitch:", self.task_pitch_deg_var, "deg")
+        add_field(5, "Yaw:", self.task_yaw_deg_var, "deg")
+
+        # Checkbox de trayectoria cartesiana
+        cartesian_chk = tk.Checkbutton(
+            fields,
+            text="Trayectoria cartesiana (cartesian_path=true)",
+            variable=self.task_cartesian_var,
+            font=("Arial", 9),
+            anchor='w',
+        )
+        cartesian_chk.grid(row=6, column=0, columnspan=3, sticky='w', padx=5, pady=(10, 5))
+
+        # Botón de envío
+        send_btn = tk.Button(
+            frame,
+            text="ENVIAR POSE AL TCP (MoveIt)",
+            font=("Arial", 11, "bold"),
+            bg="#4CAF50",
+            fg="white",
+            command=self.send_task_space_pose,
+            height=2,
+            width=30,
+        )
+        send_btn.pack(pady=10)
+
+        # Etiqueta de estado
+        self.task_status_label = tk.Label(
+            frame,
+            text="Listo",
+            font=("Arial", 9),
+            fg="green",
+        )
+        self.task_status_label.pack(pady=5)
 
     def on_tab_changed(self, event):
         """Muestra u oculta la barra de pose TCP según la pestaña actual."""
@@ -1005,6 +1115,51 @@ Características:
             # Volver a mostrar si no está ya empacada
             if not self.tcp_status_frame.winfo_ismapped():
                 self.tcp_status_frame.pack(fill='x', padx=20, pady=(0, 10))
+
+    def send_task_space_pose(self):
+        """Publica un PoseCommand en el tópico pose_command para MoveIt."""
+        # Verificar que el publisher exista (bindings de PoseCommand disponibles)
+        if self.controller.pose_command_pub is None:
+            self.task_status_label.config(
+                text="pose_command no disponible (phantomx_pincher_interfaces sin soporte C)",
+                fg="red",
+            )
+            return
+
+        try:
+            x = float(self.task_x_var.get())
+            y = float(self.task_y_var.get())
+            z = float(self.task_z_var.get())
+            roll_deg = float(self.task_roll_deg_var.get())
+            pitch_deg = float(self.task_pitch_deg_var.get())
+            yaw_deg = float(self.task_yaw_deg_var.get())
+        except ValueError:
+            self.task_status_label.config(text="Error: valores numéricos inválidos", fg="red")
+            return
+
+        # Conversión a radianes para MoveIt
+        roll = math.radians(roll_deg)
+        pitch = math.radians(pitch_deg)
+        yaw = math.radians(yaw_deg)
+
+        msg = PoseCommand()
+        msg.x = x
+        msg.y = y
+        msg.z = z
+        msg.roll = roll
+        msg.pitch = pitch
+        msg.yaw = yaw
+        msg.cartesian_path = bool(self.task_cartesian_var.get())
+
+        try:
+            self.controller.pose_command_pub.publish(msg)
+            self.task_status_label.config(
+                text=f"Pose enviada: X={x:.3f}, Y={y:.3f}, Z={z:.3f}, "
+                     f"R={roll_deg:.1f}°, P={pitch_deg:.1f}°, Y={yaw_deg:.1f}°",
+                fg="blue",
+            )
+        except Exception as e:
+            self.task_status_label.config(text=f"Error publicando pose: {e}", fg="red")
 
     def launch_rviz(self):
         """Lanza robot_state_publisher + RViz usando ros2 launch"""

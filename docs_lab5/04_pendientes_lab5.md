@@ -57,15 +57,18 @@ Este documento resume **qué falta por implementar** para completar el Lab 05 co
 ## 4. Extensiones de la interfaz gráfica (HMI)
 
 - [x] **Personalización de la GUI**
-  - Añadir información del **grupo** (nombres de integrantes, logos, etc.) en la ventana principal o en una pestaña “Acerca de”.
+  - Añadida pestaña `Acerca de` en la HMI (`control_servo.py`) con:
+    - Nombres de los integrantes del grupo.
+    - Nombre de la universidad, programa e información básica de la asignatura.
 
 - [x] **Botones para poses predefinidas**
-  - Actualmente implementadas en `control_servo.py`:
-    - Pose HOME secuencial (extremo → base).
+  - Implementadas en la pestaña `Control por Pose` de `control_servo.py`:
+    - Pose HOME secuencial (extremo → base), equivalente a Pose Lab 1.
     - Pose 1 y Pose 2 secuenciales (base → extremo), definidas en grados.
-  - Pendiente:
-    - Definir al menos **2 poses adicionales** para alcanzar un mínimo de 5 poses relevantes.
-    - Actualizar la GUI para mostrar claramente el nombre/descrición de cada pose (más allá del botón).
+    - Poses de laboratorio (según la guía):  
+      `[0, 0, 0, 0, 0]`, `[25, 25, 20, -20, 0]`, `[-35, 35, -30, 30, 0]`,  
+      `[85, -20, 55, 25, 0]`, `[80, -35, 55, -45, 0]`.
+  - Los textos de los botones indican claramente el vector `[q1..q5]` de cada pose.
 
 - [ ] **Pestaña de control en espacio de la tarea**
   - Crear una nueva pestaña con sliders o campos numéricos para:

@@ -30,6 +30,12 @@ public:
         arm_->setMaxAccelerationScalingFactor(1.0);
         gripper_ = std::make_shared<MoveGroupInterface>(node_, "gripper");
 
+        RCLCPP_INFO(
+            node_->get_logger(),
+            "Arm planning frame: %s",
+            arm_->getPlanningFrame().c_str()
+        );   // <--- NEW
+    
         open_gripper_sub_ = node_->create_subscription<Bool>(
             "open_gripper", 10, std::bind(&Commander::openGripperCallback, this, _1));
 
@@ -60,9 +66,9 @@ public:
         tf2::Quaternion q;
         q.setRPY(roll, pitch, yaw);
         q = q.normalize();
-
         geometry_msgs::msg::PoseStamped target_pose;
-        target_pose.header.frame_id = "base_link";
+        target_pose.header.frame_id = arm_->getPlanningFrame();  // <--- use MoveIt’s frame
+        target_pose.header.stamp = node_->now();   
         target_pose.pose.position.x = x;
         target_pose.pose.position.y = y;
         target_pose.pose.position.z = z;

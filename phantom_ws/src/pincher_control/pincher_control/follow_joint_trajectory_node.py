@@ -116,8 +116,22 @@ class PincherFollowJointTrajectory(Node):
             f"{prefix}gripper_finger1_joint":    gripper_id,
             f"{prefix}gripper_finger2_joint":    gripper_id,
         }
+        # Mismo convenio de signos que en control_servo.py:
+        #   ID 1:  +1  (shoulder pan)
+        #   ID 2:  -1  (shoulder lift)
+        #   ID 3:  -1  (elbow flex)
+        #   ID 4:  -1  (wrist flex)
+        #   ID 5:  +1  (gripper)  → en nuestro caso gripper_id
+        self.joint_sign = {
+            1:  1,
+            2: -1,
+            3: -1,
+            4: -1,
+            gripper_id: 1,
+        }
 
         self.get_logger().info(f"Mapa joint→ID: {self.joint_to_id}")
+        self.get_logger().info(f"Signos por ID: {self.joint_sign}")
 
         # Lista de joints para /joint_states:
         #   - Todas las actuadas (keys de joint_to_id).
@@ -355,6 +369,7 @@ class PincherFollowJointTrajectory(Node):
 
         for j_name, pos_rad in zip(joint_names, point.positions):
             # Actualizar SIEMPRE la posición COMANDADA en current_positions
+            # (en el sistema de coordenadas del URDF/MoveIt)
             if j_name in self.current_positions:
                 self.current_positions[j_name] = pos_rad
 
@@ -372,8 +387,16 @@ class PincherFollowJointTrajectory(Node):
                 continue
             commanded_ids.add(dxl_id)
 
-            # Convertir radianes a ticks del AX-12A
-            tick = self.rad_to_dxl_tick(pos_rad)
+            # 🔴 AQUÍ estaba el problema:
+            # Usábamos pos_rad directamente, sin aplicar el signo de ese servo.
+            #
+            # Aplicar el signo para que el sentido físico del servo coincida
+            # con el sentido de la articulación en el URDF/MoveIt.
+            sign = self.joint_sign.get(dxl_id, 1)
+            hw_rad = pos_rad * sign
+
+            # Convertir radianes (lado hardware) a ticks del AX-12A
+            tick = self.rad_to_dxl_tick(hw_rad)
             tick_clamped = max(DXL_MIN_TICK, min(DXL_MAX_TICK, tick))
 
             # Enviar comando de posición a ese servo

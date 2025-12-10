@@ -176,6 +176,10 @@ def generate_launch_description():
         "publish_geometry_updates": True,
         "publish_state_updates": True,
         "publish_transforms_updates": True,
+        # NEW: publish robot description so external nodes (like commander)
+        # can construct their RobotModel via MoveGroupInterface
+        "publish_robot_description": True,
+        "publish_robot_description_semantic": True,
     }
 
     # MoveIt controller manager

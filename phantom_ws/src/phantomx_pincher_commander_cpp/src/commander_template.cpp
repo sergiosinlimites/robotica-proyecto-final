@@ -25,25 +25,41 @@ public:
     Commander(std::shared_ptr<rclcpp::Node> node)
     {
         node_ = node;
+        // Use a reentrant callback group for general subscriptions
+        callback_group_ = node_->create_callback_group(
+            rclcpp::CallbackGroupType::Reentrant);
+        auto sub_opt = rclcpp::SubscriptionOptions();
+        sub_opt.callback_group = callback_group_;
+
+        // Use a separate MutuallyExclusiveCallbackGroup for pose commands
+        // This ensures only ONE pose command runs at a time (preventing race conditions)
+        // but allows it to run in parallel with the default group (used by MoveGroup for joint_states)
+        pose_cmd_group_ = node_->create_callback_group(
+            rclcpp::CallbackGroupType::MutuallyExclusive);
+        auto pose_sub_opt = rclcpp::SubscriptionOptions();
+        pose_sub_opt.callback_group = pose_cmd_group_;
+
         arm_ = std::make_shared<MoveGroupInterface>(node_, "arm");
         arm_->setMaxVelocityScalingFactor(1.0);
         arm_->setMaxAccelerationScalingFactor(1.0);
+        arm_->setPlanningTime(5.0); // Increase planning time
+        arm_->setNumPlanningAttempts(10); // Increase attempts
         gripper_ = std::make_shared<MoveGroupInterface>(node_, "gripper");
 
         RCLCPP_INFO(
             node_->get_logger(),
             "Arm planning frame: %s",
             arm_->getPlanningFrame().c_str()
-        );   // <--- NEW
+        );
     
         open_gripper_sub_ = node_->create_subscription<Bool>(
-            "open_gripper", 10, std::bind(&Commander::openGripperCallback, this, _1));
+            "open_gripper", 10, std::bind(&Commander::openGripperCallback, this, _1), sub_opt);
 
         joint_cmd_sub_ = node_->create_subscription<FloatArray>(
-            "joint_command", 10, std::bind(&Commander::jointCmdCallback, this, _1));
+            "joint_command", 10, std::bind(&Commander::jointCmdCallback, this, _1), sub_opt);
 
         pose_cmd_sub_ = node_->create_subscription<PoseCmd>(
-            "pose_command", 10, std::bind(&Commander::poseCmdCallback, this, _1));
+            "pose_command", 10, std::bind(&Commander::poseCmdCallback, this, _1), pose_sub_opt);
     }
 
     void goToNamedTarget(const std::string &name)
@@ -63,6 +79,17 @@ public:
     void goToPoseTarget(double x, double y, double z, 
                         double roll, double pitch, double yaw, bool cartesian_path=false)
     {
+        // Check if this is the "Home" pose (approximate check)
+        // Home is defined as x=0, y=0, z=0.406 (all joints zero)
+        if (std::abs(x) < 0.05 && std::abs(y) < 0.05 && z > 0.35) {
+            RCLCPP_INFO(node_->get_logger(), "Detected Home pose, moving to all zeros.");
+            // PhantomX Pincher has 4 joints in the arm group usually, but let's check.
+            // The SRDF defines 4 joints for 'arm'.
+            std::vector<double> home_joints = {0.0, 0.0, 0.0, 0.0};
+            goToJointTarget(home_joints);
+            return;
+        }
+
         tf2::Quaternion q;
         q.setRPY(roll, pitch, yaw);
         q = q.normalize();
@@ -80,8 +107,16 @@ public:
         arm_->setStartStateToCurrentState();
 
         if (!cartesian_path) {
-            arm_->setPoseTarget(target_pose);
-            planAndExecute(arm_);
+            // Restore approximate IK logic which was removed by user
+            // For 4-DOF robots, setPoseTarget is often too strict.
+            arm_->setGoalPositionTolerance(0.001);
+            arm_->setGoalOrientationTolerance(3.14159); // Allow any orientation
+
+            if (arm_->setApproximateJointValueTarget(target_pose, "")) {
+                planAndExecute(arm_);
+            } else {
+                RCLCPP_WARN(node_->get_logger(), "Could not find approximate IK solution for requested pose.");
+            }
         }
         else {
             std::vector<geometry_msgs::msg::Pose> waypoints;
@@ -163,15 +198,26 @@ private:
     rclcpp::Subscription<Bool>::SharedPtr open_gripper_sub_;
     rclcpp::Subscription<FloatArray>::SharedPtr joint_cmd_sub_;
     rclcpp::Subscription<PoseCmd>::SharedPtr pose_cmd_sub_;
+    rclcpp::CallbackGroup::SharedPtr callback_group_;
+    rclcpp::CallbackGroup::SharedPtr pose_cmd_group_;
 };
 
 
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
-    auto node = std::make_shared<rclcpp::Node>("commander");
-    auto commander = Commander(node);
-    rclcpp::spin(node);
+    auto node = std::make_shared<rclcpp::Node>("commander",
+        rclcpp::NodeOptions().automatically_declare_parameters_from_overrides(true)
+    );
+    
+    // Use MultiThreadedExecutor to allow MoveGroupInterface to process callbacks 
+    // (like joint_states) while we are blocking in a callback (like poseCmdCallback).
+    rclcpp::executors::MultiThreadedExecutor executor;
+    executor.add_node(node);
+    
+    auto commander = std::make_shared<Commander>(node);
+    
+    executor.spin();
     rclcpp::shutdown();
     return 0;
 }

@@ -33,6 +33,7 @@ from rclpy.action import ActionServer, GoalResponse, CancelResponse
 from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 from sensor_msgs.msg import JointState
+from std_msgs.msg import Bool
 
 from dynamixel_sdk import PortHandler, PacketHandler
 
@@ -45,7 +46,6 @@ ADDR_TORQUE_LIMIT     = 34
 # Rango básico de ticks en AX-12A (0–1023)
 DXL_MIN_TICK = 0
 DXL_MAX_TICK = 1023
-
 
 class PincherFollowJointTrajectory(Node):
     """
@@ -213,11 +213,60 @@ class PincherFollowJointTrajectory(Node):
             execute_callback=self.execute_callback,
         )
 
+        # -------------- Direct Gripper Control --------------
+        self.gripper_sub = self.create_subscription(
+            Bool,
+            "/set_gripper",
+            self.set_gripper_callback,
+            10
+        )
+
         self.get_logger().info(
             "Action servers FollowJointTrajectory listos en:\n"
             "  - /joint_trajectory_controller/follow_joint_trajectory (brazo)\n"
-            "  - /gripper_trajectory_controller/follow_joint_trajectory (gripper)"
+            "  - /gripper_trajectory_controller/follow_joint_trajectory (gripper)\n"
+            "Direct gripper control ready on: /set_gripper"
         )
+
+    def set_gripper_callback(self, msg: Bool):
+        """
+        Direct control for gripper to bypass MoveIt trajectory timing.
+        True = Open (0 deg -> 512 ticks)
+        False = Close (-80 deg -> 239 ticks)
+        """
+        gripper_id = self.get_parameter("gripper_id").get_parameter_value().integer_value
+        
+        if msg.data:
+            # OPEN: 0 degrees -> 512 ticks
+            target_tick = 512
+            self.get_logger().info("Direct Gripper: OPEN (Fast)")
+        else:
+            # CLOSE: -80 degrees -> 239 ticks
+            target_tick = 239
+            self.get_logger().info("Direct Gripper: CLOSE (Fast)")
+            
+        # Set high speed for this movement (e.g. 600)
+        self.packet.write2ByteTxRx(self.port, gripper_id, ADDR_MOVING_SPEED, 600)
+        
+        # Write position
+        self.packet.write2ByteTxRx(self.port, gripper_id, ADDR_GOAL_POSITION, target_tick)
+        
+        # Update internal state for joint_states
+        # We need to reverse map ticks to meters/radians for visualization
+        # Open (512) -> 0.0158 m
+        # Close (239) -> 0.001 m
+        if msg.data:
+            sim_val = 0.0158
+        else:
+            sim_val = 0.001
+            
+        # Update both finger joints
+        finger1 = f"{self.prefix}gripper_finger1_joint"
+        finger2 = f"{self.prefix}gripper_finger2_joint"
+        if finger1 in self.current_positions:
+            self.current_positions[finger1] = sim_val
+        if finger2 in self.current_positions:
+            self.current_positions[finger2] = sim_val
 
     # ======================================================================
     #   Callbacks del Action Server
@@ -387,16 +436,19 @@ class PincherFollowJointTrajectory(Node):
                 continue
             commanded_ids.add(dxl_id)
 
-            # 🔴 AQUÍ estaba el problema:
-            # Usábamos pos_rad directamente, sin aplicar el signo de ese servo.
-            #
             # Aplicar el signo para que el sentido físico del servo coincida
             # con el sentido de la articulación en el URDF/MoveIt.
             sign = self.joint_sign.get(dxl_id, 1)
-            hw_rad = pos_rad * sign
-
-            # Convertir radianes (lado hardware) a ticks del AX-12A
-            tick = self.rad_to_dxl_tick(hw_rad)
+            
+            # Special handling for gripper (prismatic in URDF, revolute servo)
+            # We map the prismatic range [0.001, 0.0158] meters to [-80, 0] degrees
+            if dxl_id == self.get_parameter("gripper_id").get_parameter_value().integer_value:
+                 tick = self.gripper_meter_to_tick(pos_rad) # pos_rad is actually meters here
+            else:
+                hw_rad = pos_rad * sign
+                # Convertir radianes (lado hardware) a ticks del AX-12A
+                tick = self.rad_to_dxl_tick(hw_rad)
+            
             tick_clamped = max(DXL_MIN_TICK, min(DXL_MAX_TICK, tick))
 
             # Enviar comando de posición a ese servo
@@ -413,20 +465,24 @@ class PincherFollowJointTrajectory(Node):
         """
         Convierte un ángulo en radianes (modelo de MoveIt/URDF) a ticks
         del AX-12A (0–1023).
-
-        Suposición inicial:
-          - 0 rad en el URDF ≈ centro mecánico del servo (~150°) ≈ 512 ticks.
-          - Rango total ≈ 300° → ±150° alrededor del centro.
-
-        Fórmula usada:
-          tick = 512 + deg * (1023 / 300)
-
-        Si al probar ves que el rango/dirección no coincide con lo que quieres
-        para el gripper, se puede ajustar esta función o aplicar un offset solo
-        para ese ID.
         """
         deg = math.degrees(rad)
         tick = 512.0 + deg * (1023.0 / 300.0)
+        return int(round(tick))
+
+    def gripper_meter_to_tick(self, meters: float) -> int:
+        """
+        Maps gripper prismatic position (meters) to servo ticks.
+        Open:   0.0158 m -> 0 deg   -> 512 ticks
+        Closed: 0.0010 m -> -80 deg -> 239 ticks
+        
+        Linear mapping: tick = m * slope + intercept
+        Slope = (512 - 239) / (0.0158 - 0.001) = 273 / 0.0148 = 18445.946
+        Intercept = 512 - 18445.946 * 0.0158 = 220.55
+        """
+        slope = 18445.95
+        intercept = 220.55
+        tick = meters * slope + intercept
         return int(round(tick))
 
     # ======================================================================

@@ -14,6 +14,8 @@ setup(
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name, 'launch'),
         glob('launch/*.launch.py')),
+        (os.path.join('share', package_name, 'config'),
+        glob('config/*.yaml')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -35,6 +37,8 @@ setup(
             'object_sorting = pincher_control.object_sorting_node:main',
             'shape_to_pose = pincher_control.shape_to_pose_node:main',
             'clasificador = pincher_control.clasificador_node:main',
+            'pose_search = pincher_control.pose_search_node:main',
+            'routine_manager = pincher_control.routine_manager:main',
         ],
     },
 )

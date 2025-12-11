@@ -41,9 +41,9 @@ class SequenceState(Enum):
     MOVING_TO_PICKUP = 3
     CLOSING_GRIPPER = 4
     MOVING_TO_HOME_WITH_OBJECT = 5
-    MOVING_TO_SAFE_POS_1 = 6
-    MOVING_TO_SAFE_POS_2 = 12
-    MOVING_TO_SAFE_POS_3 = 14
+    MOVING_TO_SAFE_POS_1 = 6        # recoleccion_1 (aproximación)
+    MOVING_TO_SAFE_POS_2 = 12       # recoleccion_2 -> recoleccion_1 (retorno)
+    MOVING_TO_SAFE_POS_3 = 14       # recoleccion_1 -> home (retorno)
     MOVING_TO_SAFE_POS_4 = 16
     MOVING_TO_BIN = 7
     OPENING_GRIPPER_DROP = 8
@@ -70,8 +70,13 @@ class ClasificadorNode(Node):
         }
 
         # --- CONFIGURACIÓN DE TIEMPOS ---
-        self.TIME_MOVEMENT = 3.0  # Tiempo para movimientos del brazo
-        self.TIME_GRIPPER = 1.0   # Tiempo para abrir/cerrar gripper
+        # IMPORTANTE:
+        # Usamos tiempos suficientemente grandes para asegurarnos de que
+        # cada movimiento (plane + execute) termine ANTES de mandar la
+        # siguiente pose. Si estos tiempos son muy pequeños, MoveIt
+        # recibe varios objetivos seguidos y solo ejecuta el último.
+        self.TIME_MOVEMENT = 6.0  # Tiempo para movimientos del brazo
+        self.TIME_GRIPPER = 2.0   # Tiempo para abrir/cerrar gripper
         # -------------------------------
 
         # Estado de la secuencia
@@ -210,14 +215,25 @@ class ClasificadorNode(Node):
         if self.current_state == SequenceState.IDLE:
             return
 
-        # 1. Ir a HOME
+        # 1. Ir a HOME (paso 1 de tu secuencia)
         if self.current_state == SequenceState.MOVING_TO_HOME_START:
             self.get_logger().info("🏠 [Paso 1/12] Ir a HOME...")
             if self.publish_pose("home", cartesian_path=False):
-                self.current_state = SequenceState.OPENING_GRIPPER_START
+                # Luego ir a recoleccion_1 (aproximación)
+                self.current_state = SequenceState.MOVING_TO_SAFE_POS_1
                 self.schedule_next_step(self.TIME_MOVEMENT)
             else:
                 self.get_logger().error("❌ Error: No se pudo mover a HOME")
+                self.abort_sequence()
+
+        # 1.b Ir a RECOLECCION_1 (paso 2 de tu secuencia)
+        elif self.current_state == SequenceState.MOVING_TO_SAFE_POS_1:
+            self.get_logger().info("📍 [Paso 1b] Ir a RECOLECCION_1 (aproximación)...")
+            if self.publish_pose("recoleccion_1", cartesian_path=False):
+                self.current_state = SequenceState.OPENING_GRIPPER_START
+                self.schedule_next_step(self.TIME_MOVEMENT)
+            else:
+                self.get_logger().error("❌ Error: No se pudo mover a recoleccion_1")
                 self.abort_sequence()
 
         # 1.5 Abrir Gripper (Inicio)
@@ -226,10 +242,10 @@ class ClasificadorNode(Node):
             self.current_state = SequenceState.MOVING_TO_PICKUP
             self.schedule_next_step(self.TIME_GRIPPER)
 
-        # 2. Zona Recolección
+        # 2. Zona Recolección (paso 3 de tu secuencia: recoleccion_2)
         elif self.current_state == SequenceState.MOVING_TO_PICKUP:
             self.get_logger().info("📦 [Paso 2/12] Ir a RECOLECCIÓN...")
-            if self.publish_pose("recoleccion", cartesian_path=False):
+            if self.publish_pose("recoleccion_2", cartesian_path=False):
                 self.current_state = SequenceState.CLOSING_GRIPPER
                 self.schedule_next_step(self.TIME_MOVEMENT)
             else:
@@ -240,13 +256,24 @@ class ClasificadorNode(Node):
         elif self.current_state == SequenceState.CLOSING_GRIPPER:
             self.control_gripper(False)
 
-            # Para todas las figuras, ir a HOME con objeto antes de ir a las canecas
-            self.current_state = SequenceState.MOVING_TO_HOME_WITH_OBJECT
+            # Retornar desde recoleccion_2 siguiendo la secuencia inversa:
+            # recoleccion_2 -> recoleccion_1 -> home
+            self.current_state = SequenceState.MOVING_TO_SAFE_POS_2
             self.schedule_next_step(self.TIME_GRIPPER)
 
-        # 3. Ir a HOME con objeto
-        elif self.current_state == SequenceState.MOVING_TO_HOME_WITH_OBJECT:
-            self.get_logger().info("🏠 [Paso Extra] Ir a HOME con objeto...")
+        # 3.a recoleccion_2 -> recoleccion_1
+        elif self.current_state == SequenceState.MOVING_TO_SAFE_POS_2:
+            self.get_logger().info("⬆️  [Paso 3a] Volver a RECOLECCION_1 (desde recoleccion_2)...")
+            if self.publish_pose("recoleccion_1", cartesian_path=False):
+                self.current_state = SequenceState.MOVING_TO_SAFE_POS_3
+                self.schedule_next_step(self.TIME_MOVEMENT)
+            else:
+                self.get_logger().error("❌ Error: No se pudo mover a recoleccion_1 (retorno)")
+                self.abort_sequence()
+
+        # 3.b recoleccion_1 -> home, luego a la caneca
+        elif self.current_state == SequenceState.MOVING_TO_SAFE_POS_3:
+            self.get_logger().info("🏠 [Paso 3b] Volver a HOME con objeto...")
             if self.publish_pose("home", cartesian_path=False):
                 self.current_state = SequenceState.MOVING_TO_BIN
                 self.schedule_next_step(self.TIME_MOVEMENT)

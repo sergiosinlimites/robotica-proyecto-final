@@ -5,54 +5,71 @@
 #   - Radianes para orientación (roll, pitch, yaw)
 
 poses:
-  # Posición segura/inicial (pose válida y alcanzable)
+  # Posición HOME lejana/segura (tu paso 1)
   home:
-    x: 0.100
+    x: 0.050
     y: 0.000
-    z: 0.140
+    z: 0.400
+    roll: 0.0
+    pitch: 0.0
+    yaw: -3.142
+
+  # Aproximación a recolección (tu paso 2)
+  recoleccion_1:
+    x: 0.128
+    y: 0.000
+    z: 0.100
     roll: 3.142
     pitch: 0.0
     yaw: 0.0
 
-  # Zona donde aparecen los objetos (pose alcanzable para pick)
-  recoleccion:
-    x: 0.100
+  # Recolección baja (tu paso 3)
+  recoleccion_2:
+    x: 0.110
     y: 0.000
-    z: 0.040
+    z: 0.055
     roll: 3.142
-    pitch: -0.007
+    pitch: 0.0
     yaw: 0.0
 
-  # Destinos para cada figura/color (poses alcanzables)
-  caneca_roja:  # Cubo
-    x: -0.014
-    y: 0.127
-    z: 0.070
+  # Alias para compatibilidad (no lo usa el clasificador directamente)
+  recoleccion:
+    x: 0.110
+    y: 0.000
+    z: 0.055
     roll: 3.142
-    pitch: 0.014
-    yaw: 1.680
+    pitch: 0.0
+    yaw: 0.0
+
+  # Destinos para cada figura/color, usando TUS poses
+  caneca_roja:  # Cubo
+    x: -0.009
+    y: 0.117
+    z: 0.104
+    roll: 3.142
+    pitch: -0.074
+    yaw: 1.650
 
   caneca_verde:  # Cilindro
-    x: 0.186
-    y: 0.086
-    z: 0.065
+    x: 0.196
+    y: 0.091
+    z: 0.179
     roll: 3.142
-    pitch: -0.299
+    pitch: -0.957
     yaw: 0.433
 
   caneca_azul:  # Pentágono
-    x: 0.190
-    y: -0.098
-    z: 0.065
+    x: 0.192
+    y: -0.088
+    z: 0.184
     roll: 3.142
-    pitch: -0.391
-    yaw: -0.477
+    pitch: -1.105
+    yaw: -0.433
 
   caneca_amarilla:  # Rectángulo
-    x: -0.007
-    y: -0.113
-    z: 0.064
+    x: -0.010
+    y: -0.122
+    z: 0.109
     roll: 3.142
-    pitch: -0.062
-    yaw: -1.635
-
+    pitch: 0.087
+    yaw: -1.650

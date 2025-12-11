@@ -32,6 +32,8 @@ setup(
             'control_servo = pincher_control.control_servo:main',
             'follow_joint_trajectory = pincher_control.follow_joint_trajectory_node:main',
             'joint_angles_degrees = pincher_control.joint_angles_degrees:main',
+            'object_sorting = pincher_control.object_sorting_node:main',
+            'shape_to_pose = pincher_control.shape_to_pose_node:main',
         ],
     },
 )

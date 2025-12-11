@@ -34,6 +34,7 @@ setup(
             'joint_angles_degrees = pincher_control.joint_angles_degrees:main',
             'object_sorting = pincher_control.object_sorting_node:main',
             'shape_to_pose = pincher_control.shape_to_pose_node:main',
+            'clasificador = pincher_control.clasificador_node:main',
         ],
     },
 )

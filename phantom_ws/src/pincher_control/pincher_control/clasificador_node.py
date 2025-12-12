@@ -66,6 +66,7 @@ class ClasificadorNode(Node):
             "cubo": "caneca_roja",
             "cilindro": "caneca_verde",
             "pentagono": "caneca_azul",
+            "hexagono": "caneca_azul", # Mapeamos hexagono a la misma caneca por ahora
             "rectangulo": "caneca_amarilla",
         }
 

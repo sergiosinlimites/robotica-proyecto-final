@@ -11,6 +11,7 @@ log/
 # Workspace específico phantom_ws
 phantom_ws/build/
 phantom_ws/install/
+phantom_ws/dataset_yolo/
 phantom_ws/log/
 phantom_ws2/
 # ============================

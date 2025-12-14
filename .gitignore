@@ -59,3 +59,9 @@ Thumbs.db
 ehthumbs.db
 desktop.ini
 
+# ============================
+# Env files (no commitear)
+# ============================
+.env
+.env.*
+

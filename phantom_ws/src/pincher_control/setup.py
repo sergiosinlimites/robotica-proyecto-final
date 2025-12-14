@@ -17,7 +17,7 @@ setup(
         (os.path.join('share', package_name, 'config'),
         glob('config/*.yaml')),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'python-dotenv'],
     zip_safe=True,
     maintainer='joho',
     maintainer_email='johalopezari@unal.edu.co',

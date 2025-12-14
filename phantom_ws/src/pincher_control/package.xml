@@ -11,6 +11,7 @@
   <depend>dynamixel_sdk</depend>
   <depend>geometry_msgs</depend>
   <depend>tf2_ros</depend>
+  <exec_depend>python3-dotenv</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

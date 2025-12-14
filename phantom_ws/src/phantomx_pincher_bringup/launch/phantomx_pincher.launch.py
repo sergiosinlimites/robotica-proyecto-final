@@ -24,6 +24,7 @@ def generate_launch_description():
     #  Choose SIM vs REAL explicitly
     # -------------------------------------------------------------------------
     use_real_robot = LaunchConfiguration("use_real_robot")
+    start_clasificador = LaunchConfiguration("start_clasificador")
 
     use_real_robot_arg = DeclareLaunchArgument(
         "use_real_robot",
@@ -32,6 +33,19 @@ def generate_launch_description():
             "If 'true', connect MoveIt to the real PhantomX via "
             "pincher_control/follow_joint_trajectory. "
             "If 'false', use ros2_control simulation."
+        ),
+    )
+
+    # Argumento opcional para iniciar el clasificador con máquina de estados.
+    # Permite activar o desactivar la lógica de pick & place desde la línea
+    # de comandos. De forma predeterminada no se arranca, para evitar que la
+    # decisión sea continua si sólo se quiere probar el stack de movimiento.
+    start_clasificador_arg = DeclareLaunchArgument(
+        "start_clasificador",
+        default_value="false",
+        description=(
+            "Si es 'true', arranca el nodo clasificador con una máquina de estados. "
+            "Se recomienda activarlo cuando se ejecute en conjunto con el bringup de visión."
         ),
     )
 
@@ -145,6 +159,21 @@ def generate_launch_description():
         ],
     )
 
+    # Clasificador / máquina de estados: se lanza opcionalmente. Este nodo
+    # implementa la lógica de alto nivel para el pick & place utilizando una
+    # máquina de estados y puede pausar la visión durante la ejecución.
+    clasificador_node = Node(
+        package="pincher_control",
+        executable="clasificador_node",
+        name="clasificador_node",
+        output="screen",
+        parameters=[{
+            "fsm_enabled": True,
+            "pause_vision_during_execution": True,
+        }],
+        condition=IfCondition(start_clasificador),
+    )
+
     # -------------------------------------------------------------------------
     #  SIMULATION stack (ros2_control fake hardware)
     # -------------------------------------------------------------------------
@@ -247,10 +276,13 @@ def generate_launch_description():
     # -------------------------------------------------------------------------
     return LaunchDescription([
         use_real_robot_arg,
+        start_clasificador_arg,
 
         # Common
         robot_state_publisher_node,
         commander_node,
+        # Opcional: clasificador con máquina de estados
+        clasificador_node,
 
         # SIM-only
         ros2_control_node,

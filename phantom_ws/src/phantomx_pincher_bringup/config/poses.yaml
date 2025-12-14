@@ -7,38 +7,38 @@
 poses:
   # Posición HOME lejana/segura (tu paso 1)
   home:
-    x: 0.050
-    y: 0.000
-    z: 0.400
+    x: 0.0
+    y: 0.0
+    z: 0.406
     roll: 0.0
     pitch: 0.0
-    yaw: -3.142
+    yaw: 3.142
 
   # Aproximación a recolección (tu paso 2)
   recoleccion_1:
-    x: 0.128
+    x: 0.100
     y: 0.000
-    z: 0.100
+    z: 0.140
     roll: 3.142
-    pitch: 0.0
+    pitch: 0.195
     yaw: 0.0
 
   # Recolección baja (tu paso 3)
   recoleccion_2:
-    x: 0.110
+    x: 0.099
     y: 0.000
-    z: 0.055
+    z: 0.045
     roll: 3.142
-    pitch: 0.0
+    pitch: 0.194
     yaw: 0.0
 
   # Alias para compatibilidad (no lo usa el clasificador directamente)
   recoleccion:
-    x: 0.110
+    x: 0.099
     y: 0.000
-    z: 0.055
+    z: 0.045
     roll: 3.142
-    pitch: 0.0
+    pitch: 0.194
     yaw: 0.0
 
   # Destinos para cada figura/color, usando TUS poses

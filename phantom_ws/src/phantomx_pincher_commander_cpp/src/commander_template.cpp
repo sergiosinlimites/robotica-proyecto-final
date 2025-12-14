@@ -10,6 +10,8 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <moveit_msgs/msg/robot_trajectory.hpp>
 #include <moveit_msgs/msg/move_it_error_codes.hpp>
+#include <moveit_msgs/msg/constraints.hpp>
+#include <moveit_msgs/msg/joint_constraint.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 
 
@@ -25,6 +27,10 @@ public:
     Commander(std::shared_ptr<rclcpp::Node> node)
     {
         node_ = node;
+        // Prefer elbow-up solutions (can be disabled via parameter)
+        prefer_elbow_up_ = node_->declare_parameter<bool>("prefer_elbow_up", true);
+        // HOME: prefer IK to the HOME pose; fallback to joints=0 only if enabled.
+        home_joint_fallback_ = node_->declare_parameter<bool>("home_joint_fallback", true);
         // Use a reentrant callback group for general subscriptions
         callback_group_ = node_->create_callback_group(
             rclcpp::CallbackGroupType::Reentrant);
@@ -79,16 +85,7 @@ public:
     void goToPoseTarget(double x, double y, double z, 
                         double roll, double pitch, double yaw, bool cartesian_path=false)
     {
-        // Check if this is the "Home" pose (approximate check)
-        // Home is defined as x=0, y=0, z=0.406 (all joints zero)
-        if (std::abs(x) < 0.05 && std::abs(y) < 0.05 && z > 0.35) {
-            RCLCPP_INFO(node_->get_logger(), "Detected Home pose, moving to all zeros.");
-            // PhantomX Pincher has 4 joints in the arm group usually, but let's check.
-            // The SRDF defines 4 joints for 'arm'.
-            std::vector<double> home_joints = {0.0, 0.0, 0.0, 0.0};
-            goToJointTarget(home_joints);
-            return;
-        }
+        const bool is_home_pose = (std::abs(x) < 0.05 && std::abs(y) < 0.05 && z > 0.35);
 
         tf2::Quaternion q;
         q.setRPY(roll, pitch, yaw);
@@ -112,10 +109,32 @@ public:
             arm_->setGoalPositionTolerance(0.001);
             arm_->setGoalOrientationTolerance(3.14159); // Allow any orientation
 
+            // Soft preference: keep elbow >= 0 (avoid elbow-down)
+            if (prefer_elbow_up_) {
+                moveit_msgs::msg::Constraints constraints;
+                moveit_msgs::msg::JointConstraint elbow_c;
+                elbow_c.joint_name = "phantomx_pincher_arm_elbow_flex_joint";
+                elbow_c.position = 1.2;          // center around ~69°
+                elbow_c.tolerance_below = 1.2;   // min ~0
+                elbow_c.tolerance_above = 2.0;   // max ~3.2 (covers up to pi)
+                elbow_c.weight = 1.0;
+                constraints.joint_constraints.push_back(elbow_c);
+                arm_->setPathConstraints(constraints);
+            }
+
             if (arm_->setApproximateJointValueTarget(target_pose, "")) {
                 planAndExecute(arm_);
             } else {
                 RCLCPP_WARN(node_->get_logger(), "Could not find approximate IK solution for requested pose.");
+                if (is_home_pose && home_joint_fallback_) {
+                    RCLCPP_INFO(node_->get_logger(), "HOME fallback: moving joints to zeros.");
+                    std::vector<double> home_joints = {0.0, 0.0, 0.0, 0.0};
+                    goToJointTarget(home_joints);
+                }
+            }
+
+            if (prefer_elbow_up_) {
+                arm_->clearPathConstraints();
             }
         }
         else {
@@ -181,8 +200,10 @@ private:
     {
         auto joints = msg.data;
 
-        if (joints.size() == 6) {
-            goToJointTarget(joints);
+        // accept [q1..q4] or [q1..q6] (we only use arm joints)
+        if (joints.size() >= 4) {
+            std::vector<double> arm_joints = {joints[0], joints[1], joints[2], joints[3]};
+            goToJointTarget(arm_joints);
         }
     }
 
@@ -194,6 +215,8 @@ private:
     std::shared_ptr<rclcpp::Node> node_;
     std::shared_ptr<MoveGroupInterface> arm_;
     std::shared_ptr<MoveGroupInterface> gripper_;
+    bool prefer_elbow_up_{true};
+    bool home_joint_fallback_{true};
 
     rclcpp::Subscription<Bool>::SharedPtr open_gripper_sub_;
     rclcpp::Subscription<FloatArray>::SharedPtr joint_cmd_sub_;

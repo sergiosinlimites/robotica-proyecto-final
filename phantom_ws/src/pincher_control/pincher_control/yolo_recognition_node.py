@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
 
-"""
-Nodo de reconocimiento de figuras usando YOLOv8 (Clasificación).
-"""
+"""Nodo de reconocimiento de figuras usando YOLOv8 (Clasificación)."""
+
+import os
+from pathlib import Path
 
 import cv2
 import rclpy
+from ament_index_python.packages import get_package_share_directory
+from cv_bridge import CvBridge, CvBridgeError
+from dotenv import find_dotenv, load_dotenv
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
-from cv_bridge import CvBridge, CvBridgeError
 from ultralytics import YOLO
-import os
-from pathlib import Path
-from ament_index_python.packages import get_package_share_directory
-from dotenv import load_dotenv, find_dotenv
+
 
 class YoloRecognitionNode(Node):
     def __init__(self):
-        super().__init__('yolo_recognition_node')
+        super().__init__("yolo_recognition_node")
 
         self._load_dotenv_if_present()
 
@@ -26,54 +26,54 @@ class YoloRecognitionNode(Node):
         # Parámetros ROS
         # ------------------------
         # Si queda vacío, tomamos PINCHER_IMAGE_TOPIC o /image_raw
-        self.declare_parameter('image_topic', '')
-        self.declare_parameter('model_path', '')
-        self.declare_parameter('confidence_threshold', 0.7)
-        self.declare_parameter('inference_hz', 1.0)
-        self.declare_parameter('publish_roi', True)
+        self.declare_parameter("image_topic", "")
+        self.declare_parameter("model_path", "")
+        self.declare_parameter("confidence_threshold", 0.7)
+        self.declare_parameter("inference_hz", 1.0)
+        self.declare_parameter("publish_roi", True)
 
-        self.declare_parameter('roi_x_min_pct', 0.45)
-        self.declare_parameter('roi_x_max_pct', 0.60)
-        self.declare_parameter('roi_y_min_pct', 0.62)
-        self.declare_parameter('roi_y_max_pct', 0.77)
+        self.declare_parameter("roi_x_min_pct", 0.45)
+        self.declare_parameter("roi_x_max_pct", 0.60)
+        self.declare_parameter("roi_y_min_pct", 0.62)
+        self.declare_parameter("roi_y_max_pct", 0.77)
 
-        image_topic = self.get_parameter('image_topic').get_parameter_value().string_value.strip()
+        image_topic = self.get_parameter("image_topic").get_parameter_value().string_value.strip()
         if not image_topic:
-            image_topic = os.environ.get('PINCHER_IMAGE_TOPIC', '/image_raw').strip() or '/image_raw'
+            image_topic = os.environ.get("PINCHER_IMAGE_TOPIC", "/image_raw").strip() or "/image_raw"
 
         # Suscripción a la cámara
-        self.image_sub = self.create_subscription(
-            Image,
-            image_topic,
-            self.image_callback,
-            10
-        )
+        self.image_sub = self.create_subscription(Image, image_topic, self.image_callback, 10)
 
         # Publicadores
-        self.figure_pub = self.create_publisher(String, '/figure_type', 10)
-        self.debug_pub = self.create_publisher(Image, '/camera/debug', 10)
-        self.roi_pub = self.create_publisher(Image, '/camera/roi', 10)
+        # - /figure_type: solo se publica cuando hay detección estable (NO vacio/unknown)
+        # - /figure_state: estado continuo (incluye vacio/unknown) para gating del ejecutor de rutinas
+        self.figure_pub = self.create_publisher(String, "/figure_type", 10)
+        self.figure_state_pub = self.create_publisher(String, "/figure_state", 10)
+        self.debug_pub = self.create_publisher(Image, "/camera/debug", 10)
+        self.roi_pub = self.create_publisher(Image, "/camera/roi", 10)
 
         self.bridge = CvBridge()
 
         # Configuración del ROI (porcentajes)
-        self.roi_x_min_pct = float(self.get_parameter('roi_x_min_pct').value)
-        self.roi_x_max_pct = float(self.get_parameter('roi_x_max_pct').value)
-        self.roi_y_min_pct = float(self.get_parameter('roi_y_min_pct').value)
-        self.roi_y_max_pct = float(self.get_parameter('roi_y_max_pct').value)
+        self.roi_x_min_pct = float(self.get_parameter("roi_x_min_pct").value)
+        self.roi_x_max_pct = float(self.get_parameter("roi_x_max_pct").value)
+        self.roi_y_min_pct = float(self.get_parameter("roi_y_min_pct").value)
+        self.roi_y_max_pct = float(self.get_parameter("roi_y_max_pct").value)
 
         # Buffer para estabilizar la detección (evita falsos positivos)
         self.detection_buffer = []
         self.buffer_size = 10
         self.last_published_figure = ""
+        self.vacio_streak = 0
+        self.vacio_reset_count = 3  # inferencias seguidas en "vacio" para rearmar detección
 
         # ------------------------
         # Cargar Modelo YOLO (clasificación)
         # ------------------------
-        self.confidence_threshold = float(self.get_parameter('confidence_threshold').value)
-        self.publish_roi = bool(self.get_parameter('publish_roi').value)
+        self.confidence_threshold = float(self.get_parameter("confidence_threshold").value)
+        self.publish_roi = bool(self.get_parameter("publish_roi").value)
 
-        requested_model_path = self.get_parameter('model_path').get_parameter_value().string_value.strip()
+        requested_model_path = self.get_parameter("model_path").get_parameter_value().string_value.strip()
         model_path = self._resolve_model_path(requested_model_path)
 
         self.model = None
@@ -89,13 +89,13 @@ class YoloRecognitionNode(Node):
             self.get_logger().warn("No se encontró un modelo YOLO (best.pt). El nodo publicará 'unknown'.")
             self.get_logger().warn("Solución: pasar parámetro 'model_path' o setear env PINCHER_YOLO_MODEL.")
 
-        # Control de frecuencia (1Hz)
+        # Control de frecuencia
         self.last_inference_time = 0.0
-        inference_hz = float(self.get_parameter('inference_hz').value)
+        inference_hz = float(self.get_parameter("inference_hz").value)
         inference_hz = inference_hz if inference_hz > 0.0 else 1.0
-        self.inference_interval = 1.0 / inference_hz  # segundos
+        self.inference_interval = 1.0 / inference_hz
 
-        # Estado para overlay (para publicar video fluido aunque inferencia sea lenta)
+        # Estado para overlay
         self._last_detected_class = "unknown"
         self._last_confidence = 0.0
         self._last_raw_top1 = None
@@ -107,51 +107,42 @@ class YoloRecognitionNode(Node):
         )
 
     def _load_dotenv_if_present(self) -> None:
-        """Carga .env automáticamente usando python-dotenv."""
         env_path = find_dotenv(usecwd=True)
         if env_path:
             load_dotenv(env_path, override=False)
 
     def _resolve_model_path(self, requested: str) -> str:
-        """Resuelve la ruta del modelo con una lista de candidatos.
-
-        Orden:
-        1) parámetro model_path (si se pasó)
-        2) variable de entorno PINCHER_YOLO_MODEL
-        3) share del paquete pincher_control: share/pincher_control/models/best.pt
-        4) cwd/runs/classify/yolo_shapes/weights/best.pt (cuando se entrena local)
-        """
         candidates = []
         if requested:
             candidates.append(requested)
 
-        env_path = os.environ.get('PINCHER_YOLO_MODEL', '').strip()
+        env_path = os.environ.get("PINCHER_YOLO_MODEL", "").strip()
         if env_path:
             candidates.append(env_path)
 
         try:
-            share_dir = Path(get_package_share_directory('pincher_control'))
-            candidates.append(str(share_dir / 'models' / 'best.pt'))
+            share_dir = Path(get_package_share_directory("pincher_control"))
+            candidates.append(str(share_dir / "models" / "best.pt"))
         except Exception:
-            # puede fallar si el paquete no está indexado aún (p.ej., sin colcon build)
             pass
 
-        candidates.append(str(Path.cwd() / 'runs' / 'classify' / 'yolo_shapes' / 'weights' / 'best.pt'))
+        candidates.append(str(Path.cwd() / "runs" / "classify" / "yolo_shapes" / "weights" / "best.pt"))
 
         for p in candidates:
             pp = Path(p).expanduser()
+
             # permitir pasar directorio de corrida: .../yolo_shapes3 -> weights/best.pt
             if pp.exists() and pp.is_dir():
-                best = pp / 'weights' / 'best.pt'
+                best = pp / "weights" / "best.pt"
                 if best.exists() and best.is_file():
                     return str(best)
-                best = pp / 'best.pt'
+                best = pp / "best.pt"
                 if best.exists() and best.is_file():
                     return str(best)
-                last = pp / 'weights' / 'last.pt'
+                last = pp / "weights" / "last.pt"
                 if last.exists() and last.is_file():
                     return str(last)
-                last = pp / 'last.pt'
+                last = pp / "last.pt"
                 if last.exists() and last.is_file():
                     return str(last)
 
@@ -163,8 +154,7 @@ class YoloRecognitionNode(Node):
             self.get_logger().warn(f"  - {p}")
         return ""
 
-    def image_callback(self, msg):
-        # Siempre publicamos debug para video fluido. La inferencia va a Hz bajo.
+    def image_callback(self, msg: Image):
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         except CvBridgeError as e:
@@ -173,7 +163,6 @@ class YoloRecognitionNode(Node):
 
         height, width, _ = cv_image.shape
 
-        # Calcular ROI
         x_min = int(width * self.roi_x_min_pct)
         x_max = int(width * self.roi_x_max_pct)
         y_min = int(height * self.roi_y_min_pct)
@@ -189,13 +178,17 @@ class YoloRecognitionNode(Node):
             self._last_confidence = confidence
             self._last_raw_top1 = raw_top1
 
-            # Lógica de publicación (solo si no es vacio y es estable)
+            # Estado continuo
+            state_msg = String()
+            state_msg.data = (raw_top1 if raw_top1 is not None else "unknown")
+            self.figure_state_pub.publish(state_msg)
+
+            # Publicación confirmada
             if detected_class != "unknown" and detected_class != "vacio":
                 self.update_buffer(detected_class)
             else:
-                self.detection_buffer = []  # Reset si pierde el objeto
+                self.detection_buffer = []
 
-        # Dibujar overlay y publicar
         self._draw_and_publish(cv_image, roi, x_min, y_min, x_max, y_max)
 
     def _infer_roi(self, roi):
@@ -219,6 +212,15 @@ class YoloRecognitionNode(Node):
 
             if confidence >= self.confidence_threshold:
                 detected_class = raw_top1
+
+            # Rearmar detección cuando el ROI se vacía
+            if raw_top1 == "vacio" and confidence >= self.confidence_threshold:
+                self.vacio_streak += 1
+                if self.vacio_streak >= self.vacio_reset_count:
+                    self.last_published_figure = ""
+            else:
+                self.vacio_streak = 0
+
         except Exception as e:
             self.get_logger().error(f"Error ejecutando inferencia YOLO: {e}")
 
@@ -272,6 +274,7 @@ class YoloRecognitionNode(Node):
                     self.figure_pub.publish(msg)
                     self.last_published_figure = shape
 
+
 def main(args=None):
     rclpy.init(args=args)
     node = YoloRecognitionNode()
@@ -283,5 +286,6 @@ def main(args=None):
         node.destroy_node()
         rclpy.shutdown()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

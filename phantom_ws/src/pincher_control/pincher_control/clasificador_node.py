@@ -19,15 +19,13 @@ from enum import Enum
 
 import rclpy
 from rclpy.node import Node
-from rclpy.action import ActionClient
 
 from ament_index_python.packages import get_package_share_directory
 from std_msgs.msg import String
-from builtin_interfaces.msg import Duration
+from std_msgs.msg import Bool
+from example_interfaces.msg import Float64MultiArray
 
 from phantomx_pincher_interfaces.msg import PoseCommand
-from control_msgs.action import FollowJointTrajectory
-from trajectory_msgs.msg import JointTrajectoryPoint
 
 import yaml
 
@@ -96,18 +94,18 @@ class ClasificadorNode(Node):
             10,
         )
 
-        # Action client para control del gripper
-        self.gripper_client = ActionClient(
-            self,
-            FollowJointTrajectory,
-            "gripper_trajectory_controller/follow_joint_trajectory",
-        )
+        # Gripper: control DIRECTO (0° abrir, -80° cerrar) vía follow_joint_trajectory_node
+        # Publica Bool en /set_gripper:
+        #   True  -> OPEN  (0°)
+        #   False -> CLOSE (-80°)
+        self.gripper_pub = self.create_publisher(Bool, "/set_gripper", 10)
 
-        # Nombres de los joints del gripper
-        self.gripper_joint_names = [
-            "phantomx_pincher_gripper_finger1_joint",
-            "phantomx_pincher_gripper_finger2_joint",
-        ]
+        # Comandos directos a joints para forzar HOME (todos en 0 rad)
+        self.joint_cmd_pub = self.create_publisher(
+            Float64MultiArray,
+            "joint_command",
+            10,
+        )
 
         # Subscriber para tipo de figura
         self.figure_sub = self.create_subscription(
@@ -191,22 +189,23 @@ class ClasificadorNode(Node):
         return True
 
     def control_gripper(self, open_gripper: bool) -> None:
-        """Controla el gripper (abrir o cerrar) usando el action client."""
+        """Controla el gripper (abrir/cerrar) con /set_gripper (control directo)."""
         action = "🔓 Abriendo" if open_gripper else "🔒 Cerrando"
-        self.get_logger().info(f"{action} gripper...")
+        self.get_logger().info(f"{action} gripper (direct /set_gripper)...")
 
-        goal = FollowJointTrajectory.Goal()
-        goal.trajectory.joint_names = self.gripper_joint_names
+        msg = Bool()
+        msg.data = bool(open_gripper)
+        self.gripper_pub.publish(msg)
 
-        point = JointTrajectoryPoint()
-        # Posiciones: 1.4 para abrir, 0.6 para cerrar
-        position = 1.4 if open_gripper else 0.6
-        point.positions = [position, position]
-        point.time_from_start = Duration(sec=1, nanosec=0)
-
-        goal.trajectory.points = [point]
-
-        self.gripper_client.send_goal_async(goal)
+    def send_home_joint_command(self) -> None:
+        """Envía joint_command [0,0,0,0] para asegurar HOME articular real."""
+        msg = Float64MultiArray()
+        # commander acepta >=4; enviamos q1..q4 en 0 rad
+        msg.data = [0.0, 0.0, 0.0, 0.0]
+        self.get_logger().info(
+            "Enviando joint_command [0,0,0,0] para alinear joints a HOME real."
+        )
+        self.joint_cmd_pub.publish(msg)
 
     # ------------------------------------------------------------------
     # Máquina de estados de la secuencia
@@ -266,20 +265,13 @@ class ClasificadorNode(Node):
         elif self.current_state == SequenceState.MOVING_TO_SAFE_POS_2:
             self.get_logger().info("⬆️  [Paso 3a] Volver a RECOLECCION_1 (desde recoleccion_2)...")
             if self.publish_pose("recoleccion_1", cartesian_path=False):
-                self.current_state = SequenceState.MOVING_TO_SAFE_POS_3
-                self.schedule_next_step(self.TIME_MOVEMENT)
-            else:
-                self.get_logger().error("❌ Error: No se pudo mover a recoleccion_1 (retorno)")
-                self.abort_sequence()
-
-        # 3.b recoleccion_1 -> home, luego a la caneca
-        elif self.current_state == SequenceState.MOVING_TO_SAFE_POS_3:
-            self.get_logger().info("🏠 [Paso 3b] Volver a HOME con objeto...")
-            if self.publish_pose("home", cartesian_path=False):
+                # Anteriormente: ir a HOME con objeto y luego a la caneca.
+                # Simplificado para seguir la misma lógica de routines.yaml:
+                #   home -> recoleccion_1 -> recoleccion_2 -> recoleccion_1 -> caneca -> home
                 self.current_state = SequenceState.MOVING_TO_BIN
                 self.schedule_next_step(self.TIME_MOVEMENT)
             else:
-                self.get_logger().error("❌ Error: No se pudo mover a HOME con objeto")
+                self.get_logger().error("❌ Error: No se pudo mover a recoleccion_1 (retorno)")
                 self.abort_sequence()
 
         # 7. Ir a Caneca
@@ -312,6 +304,8 @@ class ClasificadorNode(Node):
             self.get_logger().info("=" * 60)
             self.get_logger().info("✅ SECUENCIA COMPLETADA EXITOSAMENTE")
             self.get_logger().info("=" * 60)
+            # Forzar HOME articular exacto (todas las joints en 0 rad)
+            self.send_home_joint_command()
             self.current_state = SequenceState.IDLE
             if self.sequence_timer:
                 self.sequence_timer.cancel()

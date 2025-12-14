@@ -115,6 +115,9 @@ class ClasificadorNode(Node):
             10,
         )
 
+        # Publicador de estado ocupado para pausar YOLO durante la rutina
+        self.busy_pub = self.create_publisher(Bool, "/routine_busy", 10)
+
         # Timer para ejecutar la secuencia paso a paso
         self.sequence_timer = None
 
@@ -206,6 +209,12 @@ class ClasificadorNode(Node):
             "Enviando joint_command [0,0,0,0] para alinear joints a HOME real."
         )
         self.joint_cmd_pub.publish(msg)
+
+    def set_busy(self, busy: bool) -> None:
+        """Publica si la FSM de clasificación está ejecutando una rutina."""
+        msg = Bool()
+        msg.data = busy
+        self.busy_pub.publish(msg)
 
     # ------------------------------------------------------------------
     # Máquina de estados de la secuencia
@@ -306,6 +315,8 @@ class ClasificadorNode(Node):
             self.get_logger().info("=" * 60)
             # Forzar HOME articular exacto (todas las joints en 0 rad)
             self.send_home_joint_command()
+            # Liberar la rutina para que YOLO pueda volver a detectar nuevas figuras
+            self.set_busy(False)
             self.current_state = SequenceState.IDLE
             if self.sequence_timer:
                 self.sequence_timer.cancel()
@@ -325,6 +336,7 @@ class ClasificadorNode(Node):
         """Aborta la secuencia actual."""
         self.get_logger().error("❌ Secuencia abortada debido a un error")
         self.current_state = SequenceState.IDLE
+        self.set_busy(False)
         if self.sequence_timer:
             self.sequence_timer.cancel()
             self.sequence_timer = None
@@ -356,6 +368,9 @@ class ClasificadorNode(Node):
             f"📋 Figura: {figure_type} → Caneca: {self.current_bin}"
         )
         self.get_logger().info("=" * 60)
+
+        # Marca la rutina como ocupada para pausar la detección YOLO
+        self.set_busy(True)
 
         self.current_state = SequenceState.MOVING_TO_HOME_START
         self.execute_sequence_step()

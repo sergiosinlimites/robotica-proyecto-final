@@ -12,7 +12,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from dotenv import find_dotenv, load_dotenv
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 from ultralytics import YOLO
 
 
@@ -51,6 +51,16 @@ class YoloRecognitionNode(Node):
         self.figure_state_pub = self.create_publisher(String, "/figure_state", 10)
         self.debug_pub = self.create_publisher(Image, "/camera/debug", 10)
         self.roi_pub = self.create_publisher(Image, "/camera/roi", 10)
+
+        # Permite pausar la detección mientras una rutina está en ejecución
+        # (clasificador_node publica /routine_busy=True durante la secuencia).
+        self.vision_enabled = True
+        self.busy_sub = self.create_subscription(
+            Bool,
+            "/routine_busy",
+            self.busy_callback,
+            10,
+        )
 
         self.bridge = CvBridge()
 
@@ -154,6 +164,12 @@ class YoloRecognitionNode(Node):
             self.get_logger().warn(f"  - {p}")
         return ""
 
+    def busy_callback(self, msg: Bool) -> None:
+        """Activa/desactiva la inferencia según el estado de la rutina."""
+        # True  -> rutina ocupada, no queremos nuevas detecciones
+        # False -> rutina libre, reanudamos la detección
+        self.vision_enabled = not msg.data
+
     def image_callback(self, msg: Image):
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -169,6 +185,11 @@ class YoloRecognitionNode(Node):
         y_max = int(height * self.roi_y_max_pct)
 
         roi = cv_image[y_min:y_max, x_min:x_max]
+
+        # Si la visión está deshabilitada (rutina en ejecución), solo publicamos debug/ROI.
+        if not self.vision_enabled:
+            self._draw_and_publish(cv_image, roi, x_min, y_min, x_max, y_max)
+            return
 
         current_time = self.get_clock().now().nanoseconds / 1e9
         if current_time - self.last_inference_time >= self.inference_interval:
@@ -213,10 +234,12 @@ class YoloRecognitionNode(Node):
             if confidence >= self.confidence_threshold:
                 detected_class = raw_top1
 
-            # Rearmar detección cuando el ROI se vacía
-            if raw_top1 == "vacio" and confidence >= self.confidence_threshold:
+            # Rearmar detección cuando el ROI se vacía (independiente del umbral)
+            if raw_top1 == "vacio":
                 self.vacio_streak += 1
                 if self.vacio_streak >= self.vacio_reset_count:
+                    if self.last_published_figure:
+                        self.get_logger().info("ROI en 'vacio' estable -> rearmando detección.")
                     self.last_published_figure = ""
             else:
                 self.vacio_streak = 0

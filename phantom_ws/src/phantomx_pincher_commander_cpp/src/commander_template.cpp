@@ -104,19 +104,22 @@ public:
         arm_->setStartStateToCurrentState();
 
         if (!cartesian_path) {
-            // Restore approximate IK logic which was removed by user
-            // For 4-DOF robots, setPoseTarget is often too strict.
+            // Para el PhantomX de 4 GDL usamos una tolerancia de posición fina
+            // y permitimos cualquier orientación. Además, si está activado
+            // el parámetro 'prefer_elbow_up', añadimos una restricción suave
+            // para favorecer soluciones con el codo en ángulos positivos
+            // (codo "arriba") y así evitar la rama de IK con el codo hacia
+            // abajo cuando existen varias soluciones.
             arm_->setGoalPositionTolerance(0.001);
-            arm_->setGoalOrientationTolerance(3.14159); // Allow any orientation
+            arm_->setGoalOrientationTolerance(3.14159); // permitir cualquier orientación
 
-            // Soft preference: keep elbow >= 0 (avoid elbow-down)
             if (prefer_elbow_up_) {
                 moveit_msgs::msg::Constraints constraints;
                 moveit_msgs::msg::JointConstraint elbow_c;
                 elbow_c.joint_name = "phantomx_pincher_arm_elbow_flex_joint";
-                elbow_c.position = 1.2;          // center around ~69°
-                elbow_c.tolerance_below = 1.2;   // min ~0
-                elbow_c.tolerance_above = 2.0;   // max ~3.2 (covers up to pi)
+                elbow_c.position = 1.2;          // centro alrededor de ~69° (rad)
+                elbow_c.tolerance_below = 1.2;   // mínimo ~0
+                elbow_c.tolerance_above = 2.0;   // máximo ~3.2 (≈180°)
                 elbow_c.weight = 1.0;
                 constraints.joint_constraints.push_back(elbow_c);
                 arm_->setPathConstraints(constraints);
@@ -125,9 +128,15 @@ public:
             if (arm_->setApproximateJointValueTarget(target_pose, "")) {
                 planAndExecute(arm_);
             } else {
-                RCLCPP_WARN(node_->get_logger(), "Could not find approximate IK solution for requested pose.");
+                RCLCPP_WARN(
+                    node_->get_logger(),
+                    "Could not find approximate IK solution for requested pose."
+                );
                 if (is_home_pose && home_joint_fallback_) {
-                    RCLCPP_INFO(node_->get_logger(), "HOME fallback: moving joints to zeros.");
+                    RCLCPP_INFO(
+                        node_->get_logger(),
+                        "HOME fallback: moving joints to zeros."
+                    );
                     std::vector<double> home_joints = {0.0, 0.0, 0.0, 0.0};
                     goToJointTarget(home_joints);
                 }

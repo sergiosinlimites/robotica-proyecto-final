@@ -334,7 +334,58 @@ Esta organización permite separar claramente:
 - El **bringup** (cómo se lanza todo el sistema).
 - Los **nodos de control y de visión**.
 
-## 8. Resultados
+
+## 8. Vision general del sistema basado en una maquina de estados finita (FSM) implementada en software
+Basado en los nodos implementados y siguiendo la arquitectura de ROS2 , se propone integrar una logica de ejecucion global del sistema basado en una FSM, esto permite estructurar de  una mejor manera las rutinas del robot minimizando bugs que puedan surgir de fallos en la comunicacion/interaccion de los nodos de ROS. El diagrama de transicion de estados de la FSM propuesta se ve a continuacion: 
+
+ <p align="center">
+  <img src="Images_sergio_Rodriguez/FSM_states_diagram.jpeg" width="500">
+</p>
+
+Esta maquina de estados se podria implementar dentro del paquete pincher control creando un nuevo nodo para ello, permitiendo asi que este nodo con la FSM interactue con los nodos de vision, y control para poder manejar el robot siguiendo una logica de estados propuestas, la cual basaria sus variables de transicion en las variabes otorgadas por el nodo de vision y de control, y actuaria directamente sobre este ultimo para ejecutar la rutina deseada. 
+
+Esto ayudaria a insensibilizar la ejecuacion de la rutina ante datos basura que pueda estar enviando el modulo de vision, ademas de optimizar los recursos de Hardware del sistema al poder inactivar el modulo de vision mientras se esta ejecutando la rutina del robot. 
+
+**Cabe resaltar que esto se implemento parcialmente, por lo que esta idea de ver el sistema globalmente y trabajarlo con una FSM queda como una posible mejora a lo que se presenta en este repositorio**
+
+
+## 9. Diagram de flujo de acciones del Robot
+```mermaid
+flowchart TD
+    A[Inicio del sistema] --> B[Inicializar robot Pincher]
+    B --> C[Inicializar cámara / sistema de visión]
+    C --> D[Capturar imagen]
+    D --> E[Procesar imagen]
+    E --> F{¿Figura detectada?}
+
+    F -->|No| D
+    F -->|Sí| G[Clasificar figura]
+
+    G --> H[Calcular posición de la figura]
+    H --> I[Mover robot a la figura]
+    I --> J[Cerrar pinza y agarrar objeto]
+
+    J --> K{Tipo de figura}
+    K -->|Cubo| L[Mover a caja 1]
+    K -->|Cilindro| M[Mover a caja 2]
+    K -->|Pentágono| N[Mover a caja 3]
+    K -->|Rectángulo| Q[Mover a caja 4]
+
+    L --> O[Abrir pinza]
+    M --> O
+    N --> O
+    Q --> O
+
+    O --> P[Regresar a posición inicial]
+    P --> D
+```
+
+
+
+
+
+
+## 10. Resultados
 
 En esta sección se documentarán los resultados obtenidos con el sistema en simulación y con el robot real.
 
@@ -353,10 +404,10 @@ Matríz de confusión del modelo YOLO implementado
 > Nota: según la rúbrica, los videos deben iniciar con la introducción de Labsir.
 
 
-## 9. Conclusiones
+## 11. Conclusiones
 
 En este proyecto se integraron **cinemática, planificación de movimiento y visión por computador** en un mismo sistema robótico, logrando una rutina de clasificación autónoma sobre el robot Phantom X Pincher. La calibración manual de poses con MoveIt y `tf2_echo` permitió obtener posiciones seguras y reproducibles para la zona de recolección y las canecas, sirviendo como base para el diseño de las trayectorias.
 
 El entrenamiento de un modelo YOLO con imágenes reales de la cámara ORBBEC Astra Pro demostró la importancia de contar con un dataset bien curado y balanceado para obtener buenas tasas de acierto en la detección. Finalmente, la integración entre los nodos de visión y los nodos de movimiento a través de ROS 2 validó el uso de esta plataforma para desarrollar sistemas robóticos modulares y escalables.
 
-> El grupo puede complementar esta sección con métricas cuantitativas (tiempos de ejecución, tasas de acierto, fallos observados) y reflexiones personales sobre el trabajo realizado.
+ 

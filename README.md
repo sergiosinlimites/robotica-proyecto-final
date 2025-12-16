@@ -8,6 +8,7 @@
 <p align="center">
   <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=20&pause=1200&duration=3500&color=00E5FF&center=true&vCenter=true&width=1000&lines=Proyecto+Final+de+Robótica+%E2%80%A2+Innovación+y+Desarrollo;Control+Avanzado+%E2%80%A2+Simulación+%E2%80%A2+Implementación" alt="typing">
 </p>
+
 ---
 ### 🛰️ Descripción general
 Este repositorio contiene el **Proyecto Final** del curso de *Robótica 2025-II*. 

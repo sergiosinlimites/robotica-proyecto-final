@@ -200,7 +200,7 @@ Con esta configuración:
 - `clasificador_node` escucha el tipo de figura detectada y ejecuta la rutina completa de pick & place.
 
 
-##PLANO DE PLANTA
+## PLANO DE PLANTA
 ![Plano](https://github.com/user-attachments/assets/3f22177a-4c98-4dbd-ae4e-058bb7476d0a)
 
 

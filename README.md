@@ -142,6 +142,11 @@ Con esta configuración:
 - `clasificador_node` escucha el tipo de figura detectada y ejecuta la rutina completa de pick & place.
 
 
+##PLANO DE PLANTA
+![Plano](https://github.com/user-attachments/assets/3f22177a-4c98-4dbd-ae4e-058bb7476d0a)
+
+
+
 ## 4. Calibración manual de las poses
 
 Para definir las poses utilizadas en la rutina (zona de recolección y canecas), se siguió el flujo de la guía de MoveIt:

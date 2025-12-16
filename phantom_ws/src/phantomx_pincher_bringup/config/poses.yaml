@@ -68,7 +68,7 @@ poses:
 
   caneca_amarilla:  # Rectángulo
     x: -0.010
-    y: -0.122
+    y: -0.110
     z: 0.109
     roll: 3.142
     pitch: 0.087

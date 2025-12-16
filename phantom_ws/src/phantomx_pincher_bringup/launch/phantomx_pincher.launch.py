@@ -2,17 +2,29 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command, PathJoinSubstitution, LaunchConfiguration
+from launch.substitutions import Command, PathJoinSubstitution, LaunchConfiguration, FindExecutable
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.parameter_descriptions import ParameterValue
 
+import os
+import yaml
+from ament_index_python.packages import get_package_share_directory
 
+def load_yaml(package_name, file_path):
+    package_path = get_package_share_directory(package_name)
+    absolute_file_path = os.path.join(package_path, file_path)
+    try:
+        with open(absolute_file_path, "r") as file:
+            return yaml.safe_load(file)
+    except EnvironmentError:
+        return None
 def generate_launch_description():
     # -------------------------------------------------------------------------
     #  Choose SIM vs REAL explicitly
     # -------------------------------------------------------------------------
     use_real_robot = LaunchConfiguration("use_real_robot")
+    start_clasificador = LaunchConfiguration("start_clasificador")
 
     use_real_robot_arg = DeclareLaunchArgument(
         "use_real_robot",
@@ -21,6 +33,19 @@ def generate_launch_description():
             "If 'true', connect MoveIt to the real PhantomX via "
             "pincher_control/follow_joint_trajectory. "
             "If 'false', use ros2_control simulation."
+        ),
+    )
+
+    # Argumento opcional para iniciar el clasificador con máquina de estados.
+    # Permite activar o desactivar la lógica de pick & place desde la línea
+    # de comandos. De forma predeterminada no se arranca, para evitar que la
+    # decisión sea continua si sólo se quiere probar el stack de movimiento.
+    start_clasificador_arg = DeclareLaunchArgument(
+        "start_clasificador",
+        default_value="false",
+        description=(
+            "Si es 'true', arranca el nodo clasificador con una máquina de estados. "
+            "Se recomienda activarlo cuando se ejecute en conjunto con el bringup de visión."
         ),
     )
 
@@ -45,9 +70,24 @@ def generate_launch_description():
         "move_group.launch.py",
     ])
 
+    # Define ros2_control_plugin based on use_real_robot
+    from launch.substitutions import PythonExpression
+    ros2_control_plugin = PythonExpression([
+        "'real' if '", use_real_robot, "' == 'true' else 'fake'"
+    ])
+    
+    # Disable ros2_control in URDF if using real robot (since we use pincher_control node)
+    ros2_control_arg = PythonExpression([
+        "'false' if '", use_real_robot, "' == 'true' else 'true'"
+    ])
+
     # Robot description string (xacro → URDF)
     robot_description = ParameterValue(
-        Command(["xacro ", urdf_path]),
+        Command([
+            "xacro ", urdf_path,
+            " ros2_control_plugin:=", ros2_control_plugin,
+            " ros2_control:=", ros2_control_arg,
+        ]),
         value_type=str,
     )
 
@@ -66,12 +106,72 @@ def generate_launch_description():
         }],
     )
 
+    # SRDF
+    _robot_description_semantic_xml = Command(
+        [
+            PathJoinSubstitution([FindExecutable(name="xacro")]),
+            " ",
+            PathJoinSubstitution(
+                [
+                    FindPackageShare("phantomx_pincher_moveit_config"),
+                    "srdf",
+                    "phantomx_pincher.srdf.xacro",
+                ]
+            ),
+            " ",
+            "prefix:=", "phantomx_pincher_",
+            " ",
+            "name:=", "phantomx_pincher",
+            " ",
+            "use_real_gripper:=", use_real_robot,
+        ]
+    )
+    robot_description_semantic = {
+        "robot_description_semantic": ParameterValue(
+            _robot_description_semantic_xml,
+            value_type=str,
+        )
+    }
+
+    # Kinematics
+    # We need to load the yaml file. Since we don't have the load_yaml helper here, 
+    # we can import yaml and use get_package_share_directory directly or copy the helper.
+    # For simplicity, let's just add the import and helper or do it inline.
+    # But wait, 'load_yaml' is not defined in this file.
+    # I will add the load_yaml function at the top or use a simpler approach if possible.
+    # Actually, let's just add the parameters to the node and assume we can load the file.
+    # I'll add the load_yaml helper function to this file first.
+    
+    kinematics = load_yaml(
+        "phantomx_pincher_moveit_config", "config/kinematics.yaml"
+    )
+
     # Commander (MoveGroupInterface wrapper) – always run
     commander_node = Node(
         package="phantomx_pincher_commander_cpp",
         executable="commander",
         name="commander",
         output="screen",
+        parameters=[
+            {"robot_description": robot_description},
+            robot_description_semantic,
+            kinematics,
+        ],
+    )
+
+    # Clasificador / máquina de estados: se lanza opcionalmente. Este nodo
+    # implementa la lógica de alto nivel para el pick & place utilizando una
+    # máquina de estados y puede pausar la visión durante la ejecución.
+    clasificador_node = Node(
+        package="pincher_control",
+        executable="clasificador_node",
+        name="clasificador_node",
+        output="screen",
+        parameters=[{
+            "fsm_enabled": True,
+            "pause_vision_during_execution": True,
+        }],
+        condition=IfCondition(start_clasificador),
     )
 
     # -------------------------------------------------------------------------
@@ -176,10 +276,13 @@ def generate_launch_description():
     # -------------------------------------------------------------------------
     return LaunchDescription([
         use_real_robot_arg,
+        start_clasificador_arg,
 
         # Common
         robot_state_publisher_node,
         commander_node,
+        # Opcional: clasificador con máquina de estados
+        clasificador_node,
 
         # SIM-only
         ros2_control_node,

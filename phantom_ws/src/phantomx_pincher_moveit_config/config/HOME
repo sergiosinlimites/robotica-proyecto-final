@@ -1,0 +1,3 @@
+HOME
+DESPUES ros2 topic pub -1 /pose_command phantomx_pincher_interfaces/msg/PoseCommand "{x: 0.100, y: 0.0, z: 0.140, roll: 3.142, pitch: 0.195, yaw: 0.0, cartesian_path: false}"
+

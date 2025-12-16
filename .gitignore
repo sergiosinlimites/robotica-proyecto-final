@@ -11,8 +11,9 @@ log/
 # Workspace específico phantom_ws
 phantom_ws/build/
 phantom_ws/install/
+phantom_ws/dataset_yolo/
 phantom_ws/log/
-
+phantom_ws2/
 # ============================
 # Python
 # ============================
@@ -57,4 +58,10 @@ cmake-build-*/
 Thumbs.db
 ehthumbs.db
 desktop.ini
+
+# ============================
+# Env files (no commitear)
+# ============================
+.env
+.env.*
 

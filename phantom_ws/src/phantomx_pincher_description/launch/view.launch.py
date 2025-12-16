@@ -60,15 +60,6 @@ def generate_launch_description() -> LaunchDescription:
             value_type=str,
         )
     }
-
-    # List of nodes to be launched
-    # IMPORTANTE:
-    # Aquí solo lanzamos robot_state_publisher + rviz2.
-    # El tópico /joint_states lo publica tu propio nodo
-    # `pincher_control/control_servo.py`, igual que en phantom_ws2.
-    # Si arrancáramos también joint_state_publisher_gui, estaría
-    # publicando continuamente en /joint_states y "pisaría" los
-    # valores que envía control_servo, dejando la simulación fija.
     nodes = [
         # robot_state_publisher
         Node(
@@ -91,6 +82,14 @@ def generate_launch_description() -> LaunchDescription:
                 log_level,
             ],
             parameters=[{"use_sim_time": use_sim_time}],
+        ),
+        # joint_state_publisher_gui
+        Node(
+            package="joint_state_publisher_gui",
+            executable="joint_state_publisher_gui",
+            output="log",
+            arguments=["--ros-args", "--log-level", log_level],
+            # parameters=[{"use_sim_time": use_sim_time}],
         ),
     ]
 

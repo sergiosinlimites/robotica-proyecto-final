@@ -10,6 +10,8 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <moveit_msgs/msg/robot_trajectory.hpp>
 #include <moveit_msgs/msg/move_it_error_codes.hpp>
+#include <moveit_msgs/msg/constraints.hpp>
+#include <moveit_msgs/msg/joint_constraint.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 
 
@@ -25,25 +27,45 @@ public:
     Commander(std::shared_ptr<rclcpp::Node> node)
     {
         node_ = node;
+        // Prefer elbow-up solutions (can be disabled via parameter)
+        prefer_elbow_up_ = node_->declare_parameter<bool>("prefer_elbow_up", true);
+        // HOME: prefer IK to the HOME pose; fallback to joints=0 only if enabled.
+        home_joint_fallback_ = node_->declare_parameter<bool>("home_joint_fallback", true);
+        // Use a reentrant callback group for general subscriptions
+        callback_group_ = node_->create_callback_group(
+            rclcpp::CallbackGroupType::Reentrant);
+        auto sub_opt = rclcpp::SubscriptionOptions();
+        sub_opt.callback_group = callback_group_;
+
+        // Use a separate MutuallyExclusiveCallbackGroup for pose commands
+        // This ensures only ONE pose command runs at a time (preventing race conditions)
+        // but allows it to run in parallel with the default group (used by MoveGroup for joint_states)
+        pose_cmd_group_ = node_->create_callback_group(
+            rclcpp::CallbackGroupType::MutuallyExclusive);
+        auto pose_sub_opt = rclcpp::SubscriptionOptions();
+        pose_sub_opt.callback_group = pose_cmd_group_;
+
         arm_ = std::make_shared<MoveGroupInterface>(node_, "arm");
         arm_->setMaxVelocityScalingFactor(1.0);
         arm_->setMaxAccelerationScalingFactor(1.0);
+        arm_->setPlanningTime(5.0); // Increase planning time
+        arm_->setNumPlanningAttempts(10); // Increase attempts
         gripper_ = std::make_shared<MoveGroupInterface>(node_, "gripper");
 
         RCLCPP_INFO(
             node_->get_logger(),
             "Arm planning frame: %s",
             arm_->getPlanningFrame().c_str()
-        );   // <--- NEW
+        );
     
         open_gripper_sub_ = node_->create_subscription<Bool>(
-            "open_gripper", 10, std::bind(&Commander::openGripperCallback, this, _1));
+            "open_gripper", 10, std::bind(&Commander::openGripperCallback, this, _1), sub_opt);
 
         joint_cmd_sub_ = node_->create_subscription<FloatArray>(
-            "joint_command", 10, std::bind(&Commander::jointCmdCallback, this, _1));
+            "joint_command", 10, std::bind(&Commander::jointCmdCallback, this, _1), sub_opt);
 
         pose_cmd_sub_ = node_->create_subscription<PoseCmd>(
-            "pose_command", 10, std::bind(&Commander::poseCmdCallback, this, _1));
+            "pose_command", 10, std::bind(&Commander::poseCmdCallback, this, _1), pose_sub_opt);
     }
 
     void goToNamedTarget(const std::string &name)
@@ -63,6 +85,8 @@ public:
     void goToPoseTarget(double x, double y, double z, 
                         double roll, double pitch, double yaw, bool cartesian_path=false)
     {
+        const bool is_home_pose = (std::abs(x) < 0.05 && std::abs(y) < 0.05 && z > 0.35);
+
         tf2::Quaternion q;
         q.setRPY(roll, pitch, yaw);
         q = q.normalize();
@@ -80,8 +104,47 @@ public:
         arm_->setStartStateToCurrentState();
 
         if (!cartesian_path) {
-            arm_->setPoseTarget(target_pose);
-            planAndExecute(arm_);
+            // Para el PhantomX de 4 GDL usamos una tolerancia de posición fina
+            // y permitimos cualquier orientación. Además, si está activado
+            // el parámetro 'prefer_elbow_up', añadimos una restricción suave
+            // para favorecer soluciones con el codo en ángulos positivos
+            // (codo "arriba") y así evitar la rama de IK con el codo hacia
+            // abajo cuando existen varias soluciones.
+            arm_->setGoalPositionTolerance(0.001);
+            arm_->setGoalOrientationTolerance(3.14159); // permitir cualquier orientación
+
+            if (prefer_elbow_up_) {
+                moveit_msgs::msg::Constraints constraints;
+                moveit_msgs::msg::JointConstraint elbow_c;
+                elbow_c.joint_name = "phantomx_pincher_arm_elbow_flex_joint";
+                elbow_c.position = 1.2;          // centro alrededor de ~69° (rad)
+                elbow_c.tolerance_below = 1.2;   // mínimo ~0
+                elbow_c.tolerance_above = 2.0;   // máximo ~3.2 (≈180°)
+                elbow_c.weight = 1.0;
+                constraints.joint_constraints.push_back(elbow_c);
+                arm_->setPathConstraints(constraints);
+            }
+
+            if (arm_->setApproximateJointValueTarget(target_pose, "")) {
+                planAndExecute(arm_);
+            } else {
+                RCLCPP_WARN(
+                    node_->get_logger(),
+                    "Could not find approximate IK solution for requested pose."
+                );
+                if (is_home_pose && home_joint_fallback_) {
+                    RCLCPP_INFO(
+                        node_->get_logger(),
+                        "HOME fallback: moving joints to zeros."
+                    );
+                    std::vector<double> home_joints = {0.0, 0.0, 0.0, 0.0};
+                    goToJointTarget(home_joints);
+                }
+            }
+
+            if (prefer_elbow_up_) {
+                arm_->clearPathConstraints();
+            }
         }
         else {
             std::vector<geometry_msgs::msg::Pose> waypoints;
@@ -146,8 +209,10 @@ private:
     {
         auto joints = msg.data;
 
-        if (joints.size() == 6) {
-            goToJointTarget(joints);
+        // accept [q1..q4] or [q1..q6] (we only use arm joints)
+        if (joints.size() >= 4) {
+            std::vector<double> arm_joints = {joints[0], joints[1], joints[2], joints[3]};
+            goToJointTarget(arm_joints);
         }
     }
 
@@ -159,19 +224,32 @@ private:
     std::shared_ptr<rclcpp::Node> node_;
     std::shared_ptr<MoveGroupInterface> arm_;
     std::shared_ptr<MoveGroupInterface> gripper_;
+    bool prefer_elbow_up_{true};
+    bool home_joint_fallback_{true};
 
     rclcpp::Subscription<Bool>::SharedPtr open_gripper_sub_;
     rclcpp::Subscription<FloatArray>::SharedPtr joint_cmd_sub_;
     rclcpp::Subscription<PoseCmd>::SharedPtr pose_cmd_sub_;
+    rclcpp::CallbackGroup::SharedPtr callback_group_;
+    rclcpp::CallbackGroup::SharedPtr pose_cmd_group_;
 };
 
 
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
-    auto node = std::make_shared<rclcpp::Node>("commander");
-    auto commander = Commander(node);
-    rclcpp::spin(node);
+    auto node = std::make_shared<rclcpp::Node>("commander",
+        rclcpp::NodeOptions().automatically_declare_parameters_from_overrides(true)
+    );
+    
+    // Use MultiThreadedExecutor to allow MoveGroupInterface to process callbacks 
+    // (like joint_states) while we are blocking in a callback (like poseCmdCallback).
+    rclcpp::executors::MultiThreadedExecutor executor;
+    executor.add_node(node);
+    
+    auto commander = std::make_shared<Commander>(node);
+    
+    executor.spin();
     rclcpp::shutdown();
     return 0;
 }

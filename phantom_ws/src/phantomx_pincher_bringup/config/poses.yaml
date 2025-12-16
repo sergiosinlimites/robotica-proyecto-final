@@ -5,7 +5,7 @@
 #   - Radianes para orientación (roll, pitch, yaw)
 
 poses:
-  # Posición HOME lejana/segura (tu paso 1)
+  # Posición HOME lejana/segura
   home:
     x: 0.0
     y: 0.0
@@ -14,7 +14,7 @@ poses:
     pitch: 0.0
     yaw: 3.142
 
-  # Aproximación a recolección (tu paso 2)
+  # Aproximación a recolección
   recoleccion_1:
     x: 0.100
     y: 0.000
@@ -23,7 +23,7 @@ poses:
     pitch: 0.195
     yaw: 0.0
 
-  # Recolección baja (tu paso 3)
+  # Recolección baja
   recoleccion_2:
     x: 0.099
     y: 0.000
@@ -32,7 +32,7 @@ poses:
     pitch: 0.194
     yaw: 0.0
 
-  # Alias para compatibilidad (no lo usa el clasificador directamente)
+  # Alias para compatibilidad
   recoleccion:
     x: 0.099
     y: 0.000
@@ -41,7 +41,7 @@ poses:
     pitch: 0.194
     yaw: 0.0
 
-  # Destinos para cada figura/color, usando TUS poses
+  # Destinos para cada figura/color
   caneca_roja:  # Cubo
     x: -0.009
     y: 0.117

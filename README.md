@@ -461,8 +461,11 @@ Matríz de confusión del modelo YOLO implementado
 
 > Nota: según la rúbrica, los videos deben iniciar con la introducción de Labsir.
 
+## 11. Video
 
-## 11. Conclusiones
+https://www.youtube.com/watch?v=nwK0XX3QxMM
+
+## 12. Conclusiones
 
 En este proyecto se integraron **cinemática, planificación de movimiento y visión por computador** en un mismo sistema robótico, logrando una rutina de clasificación autónoma sobre el robot Phantom X Pincher. La calibración manual de poses con MoveIt y `tf2_echo` permitió obtener posiciones seguras y reproducibles para la zona de recolección y las canecas, sirviendo como base para el diseño de las trayectorias.
 

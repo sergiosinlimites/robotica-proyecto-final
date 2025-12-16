@@ -1,7 +1,7 @@
 # ============================
 # ROS 2 / colcon workspaces
 # ============================
-
+phantom_ws/dataset_yolo/
 # En caso de usar este repo como workspace
 build/
 install/

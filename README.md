@@ -34,6 +34,17 @@ Incluye el desarrollo completo de un sistema robótico con control, simulación 
   <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=1500&pause=11500&color=7F5AF0&center=true&vCenter=true&width=1000&repeat=true&lines=Johan+Camilo+Pati%C3%B1o+Mogoll%C3%B3n+%E2%80%94+jopatinom%40unal.edu.co" alt="Johan Camilo Patiño Mogollón">
 </p>
 
+<!-- Docentes: título se muestra, luego los nombres, y desaparecen todos juntos -->
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=800&size=22&duration=1000&pause=8000&color=00E5FF&center=true&vCenter=true&width=1000&repeat=true&lines=Docentes%3A" alt="Docentes">
+</p>
+<!-- Nombres aparecen después del título (delay 1000ms) -->
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=1500&pause=6500&color=39D353&center=true&vCenter=true&width=1000&repeat=true&lines=Manuel+Felipe+Carranza+Montenegro+%E2%80%A2+mcarranza%40unal.edu.co" alt="Manuel Felipe Carranza Montenegro">
+</p>
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=1500&pause=6500&color=39D353&center=true&vCenter=true&width=1000&repeat=true&lines=Pedro+Fabi%C3%A1n+C%C3%A1rdenas+Herrera+%E2%80%A2+pfcardenash%40unal.edu.co" alt="Pedro Fabián Cárdenas Herrera">
+</p>
 <!-- ===== FIN BLOQUE ANIMACIONES EQUIPO ===== -->
 </div>
 ---

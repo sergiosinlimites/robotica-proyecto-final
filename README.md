@@ -344,7 +344,9 @@ Basado en los nodos implementados y siguiendo la arquitectura de ROS2 , se propo
 
 Esta maquina de estados se podria implementar dentro del paquete pincher control creando un nuevo nodo para ello, permitiendo asi que este nodo con la FSM interactue con los nodos de vision, y control para poder manejar el robot siguiendo una logica de estados propuestas, la cual basaria sus variables de transicion en las variabes otorgadas por el nodo de vision y de control, y actuaria directamente sobre este ultimo para ejecutar la rutina deseada. 
 
-Esto ayudaria a insensibilizar la ejecuacion de la rutina ante datos basura que pueda estar enviando el modulo de vision, ademas de optimizar los recursos de Hardware del sistema al poder inactivar el modulo de vision mientras se esta ejecutando la rutina del robot.  
+Esto ayudaria a insensibilizar la ejecuacion de la rutina ante datos basura que pueda estar enviando el modulo de vision, ademas de optimizar los recursos de Hardware del sistema al poder inactivar el modulo de vision mientras se esta ejecutando la rutina del robot. 
+
+**Cabe resaltar que esto se implemento parcialmente, por lo que esta idea de ver el sistema globalmente y trabajarlo con una FSM queda como una posible mejora a lo que se presenta en este repositorio**
 
 
 ## 9. Resultados

@@ -4,23 +4,18 @@
 <img src="https://capsule-render.vercel.app/api?type=waving&height=200&color=0:04041A,50:14213D,100:0A4D68&text=Proyecto%20Final&fontColor=E0FBFC&fontSize=60&fontAlign=50&fontAlignY=35&desc=Robótica%20•%20ROS%20•%20Innovación%20y%20Tecnología&descSize=20&descAlign=50&descAlignY=55" width="100%" />
 <br/>
 
-# 🤖 PROYECTO FINAL – ROBÓTICA
 
 ![ROS](https://img.shields.io/badge/ROS-2-blue?style=for-the-badge)
 ![Robotics](https://img.shields.io/badge/Robotics-Advanced-green?style=for-the-badge)
 ![Python](https://img.shields.io/badge/Python-3.x-yellow?style=for-the-badge)
 
 
-<!-- Línea de texto mecanografiado (animado) -->
-<p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=20&pause=1200&duration=3500&color=00E5FF&center=true&vCenter=true&width=1000&lines=Proyecto+Final+de+Robótica+%E2%80%A2+Innovación+y+Desarrollo;Control+Avanzado+%E2%80%A2+Simulación+%E2%80%A2+Implementación" alt="typing">
-</p>
 ---
-### 🛰️ Descripción general
+### Descripción general
 Este repositorio contiene el **Proyecto Final** del curso de *Robótica 2025-II*. 
 Incluye el desarrollo completo de un sistema robótico con control, simulación y aplicación práctica.
 ---
-## 🧑‍🚀 Equipo
+## Equipo
 <!-- ===== INICIO BLOQUE ANIMACIONES EQUIPO (sincronizadas) ===== -->
 <!-- Integrantes: título se muestra, luego los nombres, y desaparecen todos juntos -->
 <p align="center">

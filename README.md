@@ -1,3 +1,55 @@
+<!-- ✦✦✦ PROYECTO FINAL ROBÓTICA ✦✦✦ -->
+<div align="center">
+<!-- Banner superior "neón" -->
+<img src="https://capsule-render.vercel.app/api?type=waving&height=200&color=0:04041A,50:14213D,100:0A4D68&text=Proyecto%20Final&fontColor=E0FBFC&fontSize=60&fontAlign=50&fontAlignY=35&desc=Robótica%20•%20ROS%20•%20Innovación%20y%20Tecnología&descSize=20&descAlign=50&descAlignY=55" width="100%" />
+<br/>
+
+<!-- Línea de texto mecanografiado (animado) -->
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=20&pause=1200&duration=3500&color=00E5FF&center=true&vCenter=true&width=1000&lines=Proyecto+Final+de+Robótica+%E2%80%A2+Innovación+y+Desarrollo;Control+Avanzado+%E2%80%A2+Simulación+%E2%80%A2+Implementación" alt="typing">
+</p>
+
+---
+### 🛰️ Descripción general
+Este repositorio contiene el **Proyecto Final** del curso de *Robótica 2025-II*. 
+Incluye el desarrollo completo de un sistema robótico con control, simulación y aplicación práctica.
+---
+## 🧑‍🚀 Equipo
+<!-- ===== INICIO BLOQUE ANIMACIONES EQUIPO (una animación por línea) ===== -->
+
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=800&size=22&duration=1000&pause=13000&color=00E5FF&center=true&vCenter=true&width=1000&repeat=true&lines=Integrantes%3A" alt="Integrantes">
+</p>
+<!-- Nombres aparecen después del título (delay 1000ms) -->
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=1500&pause=11500&color=7F5AF0&center=true&vCenter=true&width=1000&repeat=true&lines=Sergio+Andr%C3%A9s+Bola%C3%B1os+Penagos+%E2%80%94+sbolanosp%40unal.edu.co" alt="Sergio Andrés Bolaños Penagos">
+</p>
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=1500&pause=11500&color=7F5AF0&center=true&vCenter=true&width=1000&repeat=true&lines=Jorge+Nicol%C3%A1s+Garz%C3%B3n+Acevedo+%E2%80%94+jngarzona%40unal.edu.co" alt="Jorge Nicolás Garzón Acevedo">
+</p>
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=1500&pause=11500&color=7F5AF0&center=true&vCenter=true&width=1000&repeat=true&lines=Sergio+Felipe+Rodriguez+Mayorga+%E2%80%94+sfrodriguezma%40unal.edu.co" alt="Sergio Felipe Rodriguez Mayorga">
+</p>
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=1500&pause=11500&color=7F5AF0&center=true&vCenter=true&width=1000&repeat=true&lines=Johan+Camilo+Pati%C3%B1o+Mogoll%C3%B3n+%E2%80%94+jopatinom%40unal.edu.co" alt="Johan Camilo Patiño Mogollón">
+</p>
+
+<!-- Docentes: título se muestra, luego los nombres, y desaparecen todos juntos -->
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=800&size=22&duration=1000&pause=8000&color=00E5FF&center=true&vCenter=true&width=1000&repeat=true&lines=Docentes%3A" alt="Docentes">
+</p>
+<!-- Nombres aparecen después del título (delay 1000ms) -->
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=1500&pause=6500&color=39D353&center=true&vCenter=true&width=1000&repeat=true&lines=Manuel+Felipe+Carranza+Montenegro+%E2%80%A2+mcarranza%40unal.edu.co" alt="Manuel Felipe Carranza Montenegro">
+</p>
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=1500&pause=6500&color=39D353&center=true&vCenter=true&width=1000&repeat=true&lines=Pedro+Fabi%C3%A1n+C%C3%A1rdenas+Herrera+%E2%80%A2+pfcardenash%40unal.edu.co" alt="Pedro Fabián Cárdenas Herrera">
+</p>
+<!-- ===== FIN BLOQUE ANIMACIONES EQUIPO ===== -->
+</div>
+---
+
+
 # Proyecto final de robótica
 
 ## 1. Integrantes
@@ -140,6 +192,11 @@ Con esta configuración:
 - MoveIt 2 y el nodo `commander` controlan el brazo real a través del controlador `follow_joint_trajectory`.
 - `yolo_recognition_node` detecta las figuras en el ROI de la cámara.
 - `clasificador_node` escucha el tipo de figura detectada y ejecuta la rutina completa de pick & place.
+
+
+##PLANO DE PLANTA
+![Plano](https://github.com/user-attachments/assets/3f22177a-4c98-4dbd-ae4e-058bb7476d0a)
+
 
 
 ## 4. Calibración manual de las poses

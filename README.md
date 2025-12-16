@@ -334,7 +334,20 @@ Esta organización permite separar claramente:
 - El **bringup** (cómo se lanza todo el sistema).
 - Los **nodos de control y de visión**.
 
-## 8. Resultados
+
+## 8. Vision general del sistema basado en una maquina de estados finita (FSM) implementada en software
+Basado en los nodos implementados y siguiendo la arquitectura de ROS2 , se propone integrar una logica de ejecucion global del sistema basado en una FSM, esto permite estructurar de  una mejor manera las rutinas del robot minimizando bugs que puedan surgir de fallos en la comunicacion/interaccion de los nodos de ROS. El diagrama de transicion de estados de la FSM propuesta se ve a continuacion: 
+
+ <p align="center">
+  <img src="Images_sergio_Rodriguez/FSM_states_diagram.jpeg" width="500">
+</p>
+
+Esta maquina de estados se podria implementar dentro del paquete pincher control creando un nuevo nodo para ello, permitiendo asi que este nodo con la FSM interactue con los nodos de vision, y control para poder manejar el robot siguiendo una logica de estados propuestas, la cual basaria sus variables de transicion en las variabes otorgadas por el nodo de vision y de control, y actuaria directamente sobre este ultimo para ejecutar la rutina deseada. 
+
+Esto ayudaria a insensibilizar la ejecuacion de la rutina ante datos basura que pueda estar enviando el modulo de vision, ademas de optimizar los recursos de Hardware del sistema al poder inactivar el modulo de vision mientras se esta ejecutando la rutina del robot.  
+
+
+## 9. Resultados
 
 En esta sección se documentarán los resultados obtenidos con el sistema en simulación y con el robot real.
 
@@ -353,7 +366,7 @@ Matríz de confusión del modelo YOLO implementado
 > Nota: según la rúbrica, los videos deben iniciar con la introducción de Labsir.
 
 
-## 9. Conclusiones
+## 10. Conclusiones
 
 En este proyecto se integraron **cinemática, planificación de movimiento y visión por computador** en un mismo sistema robótico, logrando una rutina de clasificación autónoma sobre el robot Phantom X Pincher. La calibración manual de poses con MoveIt y `tf2_echo` permitió obtener posiciones seguras y reproducibles para la zona de recolección y las canecas, sirviendo como base para el diseño de las trayectorias.
 

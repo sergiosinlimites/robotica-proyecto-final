@@ -349,7 +349,43 @@ Esto ayudaria a insensibilizar la ejecuacion de la rutina ante datos basura que 
 **Cabe resaltar que esto se implemento parcialmente, por lo que esta idea de ver el sistema globalmente y trabajarlo con una FSM queda como una posible mejora a lo que se presenta en este repositorio**
 
 
-## 9. Resultados
+## 9. Diagram de flujo de acciones del Robot
+```mermaid
+flowchart TD
+    A[Inicio del sistema] --> B[Inicializar robot Pincher]
+    B --> C[Inicializar cámara / sistema de visión]
+    C --> D[Capturar imagen]
+    D --> E[Procesar imagen]
+    E --> F{¿Figura detectada?}
+
+    F -->|No| D
+    F -->|Sí| G[Clasificar figura]
+
+    G --> H[Calcular posición de la figura]
+    H --> I[Mover robot a la figura]
+    I --> J[Cerrar pinza y agarrar objeto]
+
+    J --> K{Tipo de figura}
+    K -->|Cubo| L[Mover a caja 1]
+    K -->|Cilindro| M[Mover a caja 2]
+    K -->|Pentágono| N[Mover a caja 3]
+    K -->|Rectángulo| Q[Mover a caja 4]
+
+    L --> O[Abrir pinza]
+    M --> O
+    N --> O
+    Q --> O
+
+    O --> P[Regresar a posición inicial]
+    P --> D
+```
+
+
+
+
+
+
+## 10. Resultados
 
 En esta sección se documentarán los resultados obtenidos con el sistema en simulación y con el robot real.
 
@@ -368,7 +404,7 @@ Matríz de confusión del modelo YOLO implementado
 > Nota: según la rúbrica, los videos deben iniciar con la introducción de Labsir.
 
 
-## 10. Conclusiones
+## 11. Conclusiones
 
 En este proyecto se integraron **cinemática, planificación de movimiento y visión por computador** en un mismo sistema robótico, logrando una rutina de clasificación autónoma sobre el robot Phantom X Pincher. La calibración manual de poses con MoveIt y `tf2_echo` permitió obtener posiciones seguras y reproducibles para la zona de recolección y las canecas, sirviendo como base para el diseño de las trayectorias.
 

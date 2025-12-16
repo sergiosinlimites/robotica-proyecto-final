@@ -16,39 +16,38 @@ Incluye el desarrollo completo de un sistema robótico con control, simulación 
 ---
 ## 🧑‍🚀 Equipo
 <!-- ===== INICIO BLOQUE ANIMACIONES EQUIPO (una animación por línea) ===== -->
-<!-- Encabezado: Integrantes -->
+<!-- Integrantes: título se muestra, luego los nombres, y desaparecen todos juntos -->
 <p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=800&size=22&duration=2000&pause=800&color=00E5FF&center=true&vCenter=true&width=1000&repeat=true&v=1&lines=Integrantes%3A" alt="Integrantes">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=800&size=22&duration=1000&pause=13000&color=00E5FF&center=true&vCenter=true&width=1000&repeat=true&lines=Integrantes%3A" alt="Integrantes">
 </p>
-<!-- Nombre 1 -->
+<!-- Nombres aparecen después del título (delay 1000ms) -->
 <p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=2400&pause=600&color=7F5AF0&center=true&vCenter=true&width=1000&repeat=true&v=1&lines=Sergio+Andr%C3%A9s+Bola%C3%B1os+Penagos+%E2%80%94+sbolanosp%40unal.edu.co" alt="Sergio Andrés Bolaños Penagos">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=1500&pause=11500&color=7F5AF0&center=true&vCenter=true&width=1000&repeat=true&lines=Sergio+Andr%C3%A9s+Bola%C3%B1os+Penagos+%E2%80%94+sbolanosp%40unal.edu.co" alt="Sergio Andrés Bolaños Penagos">
 </p>
-<!-- Nombre 2 -->
 <p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=2400&pause=600&color=7F5AF0&center=true&vCenter=true&width=1000&repeat=true&v=1&lines=Jorge+Nicol%C3%A1s+Garz%C3%B3n+Acevedo+%E2%80%94+jngarzona%40unal.edu.co" alt="Jorge Nicolás Garzón Acevedo">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=1500&pause=11500&color=7F5AF0&center=true&vCenter=true&width=1000&repeat=true&lines=Jorge+Nicol%C3%A1s+Garz%C3%B3n+Acevedo+%E2%80%94+jngarzona%40unal.edu.co" alt="Jorge Nicolás Garzón Acevedo">
 </p>
-<!-- Nombre 3 -->
 <p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=2400&pause=600&color=7F5AF0&center=true&vCenter=true&width=1000&repeat=true&v=1&lines=Sergio+Felipe+Rodriguez+Mayorga+%E2%80%94+sfrodriguezma%40unal.edu.co" alt="Sergio Felipe Rodriguez Mayorga">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=1500&pause=11500&color=7F5AF0&center=true&vCenter=true&width=1000&repeat=true&lines=Sergio+Felipe+Rodriguez+Mayorga+%E2%80%94+sfrodriguezma%40unal.edu.co" alt="Sergio Felipe Rodriguez Mayorga">
 </p>
-<!-- Nombre 4 -->
 <p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=2400&pause=600&color=7F5AF0&center=true&vCenter=true&width=1000&repeat=true&v=1&lines=Johan+Camilo+Pati%C3%B1o+Mogoll%C3%B3n+%E2%80%94+jopatinom%40unal.edu.co" alt="Johan Camilo Patiño Mogollón">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=1500&pause=11500&color=7F5AF0&center=true&vCenter=true&width=1000&repeat=true&lines=Johan+Camilo+Pati%C3%B1o+Mogoll%C3%B3n+%E2%80%94+jopatinom%40unal.edu.co" alt="Johan Camilo Patiño Mogollón">
 </p>
 
-<!-- Encabezado: Docentes -->
+<!-- Docentes: título se muestra, luego los nombres, y desaparecen todos juntos -->
 <p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=800&size=22&duration=2000&pause=800&color=00E5FF&center=true&vCenter=true&width=1000&repeat=true&v=1&lines=Docentes%3A" alt="Docentes">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=800&size=22&duration=1000&pause=8000&color=00E5FF&center=true&vCenter=true&width=1000&repeat=true&lines=Docentes%3A" alt="Docentes">
 </p>
-<!-- Docente 1 -->
+<!-- Nombres aparecen después del título (delay 1000ms) -->
 <p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=2400&pause=600&color=39D353&center=true&vCenter=true&width=1000&repeat=true&v=1&lines=Manuel+Felipe+Carranza+Montenegro+%E2%80%A2+mcarranza%40unal.edu.co" alt="Manuel Felipe Carranza Montenegro">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=1500&pause=6500&color=39D353&center=true&vCenter=true&width=1000&repeat=true&lines=Manuel+Felipe+Carranza+Montenegro+%E2%80%A2+mcarranza%40unal.edu.co" alt="Manuel Felipe Carranza Montenegro">
 </p>
-<!-- Docente 2 -->
 <p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=2400&pause=600&color=39D353&center=true&vCenter=true&width=1000&repeat=true&v=1&lines=Pedro+Fabi%C3%A1n+C%C3%A1rdenas+Herrera+%E2%80%A2+pfcardenash%40unal.edu.co" alt="Pedro Fabián Cárdenas Herrera">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=1500&pause=6500&color=39D353&center=true&vCenter=true&width=1000&repeat=true&lines=Pedro+Fabi%C3%A1n+C%C3%A1rdenas+Herrera+%E2%80%A2+pfcardenash%40unal.edu.co" alt="Pedro Fabián Cárdenas Herrera">
 </p>
+<!-- ===== FIN BLOQUE ANIMACIONES EQUIPO ===== -->
+</div>
+---
 <!-- ===== FIN BLOQUE ANIMACIONES EQUIPO ===== -->
 </div>
 ---

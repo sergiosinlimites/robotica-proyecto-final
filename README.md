@@ -374,4 +374,4 @@ En este proyecto se integraron **cinemática, planificación de movimiento y vis
 
 El entrenamiento de un modelo YOLO con imágenes reales de la cámara ORBBEC Astra Pro demostró la importancia de contar con un dataset bien curado y balanceado para obtener buenas tasas de acierto en la detección. Finalmente, la integración entre los nodos de visión y los nodos de movimiento a través de ROS 2 validó el uso de esta plataforma para desarrollar sistemas robóticos modulares y escalables.
 
-> El grupo puede complementar esta sección con métricas cuantitativas (tiempos de ejecución, tasas de acierto, fallos observados) y reflexiones personales sobre el trabajo realizado.
+ 
